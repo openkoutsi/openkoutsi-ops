@@ -20,9 +20,8 @@ locals {
     stats_fqdn         = local.stats_fqdn
     certbot_email      = var.certbot_email
 
-    # Non-secret app config
-    llm_base_url        = var.llm_base_url
-    llm_model           = var.llm_model
+    # Non-secret app config. LLM base URL / model are admin-managed (InstanceSettings),
+    # so they are not seeded here; LLM_ALLOWED_SERVERS is an env-only SSRF guard.
     llm_allowed_servers = var.llm_allowed_servers
     strava_client_id    = var.strava_client_id
     wahoo_client_id     = var.wahoo_client_id

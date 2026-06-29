@@ -20,9 +20,8 @@ certbot_email = "admin@openkoutsi.example"
 # ── Non-secret app config ────────────────────────────────────────────────────
 strava_client_id    = "12345"
 wahoo_client_id     = ""
-llm_base_url        = ""
-llm_model           = ""
-llm_allowed_servers = ""
+# LLM base URL / model / API key are set on the admin settings page, not here.
+llm_allowed_servers = "" # env-only SSRF allowlist (optional)
 
 # ── Dashboard auth (htpasswd -nB admin) ──────────────────────────────────────
 # goaccess_htpasswd = "admin:$2y$05$..."   # set via TF_VAR_goaccess_htpasswd

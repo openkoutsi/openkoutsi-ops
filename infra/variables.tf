@@ -87,20 +87,11 @@ variable "certbot_email" {
 
 # ── Non-secret application config ───────────────────────────────────────────
 
-variable "llm_base_url" {
-  description = "OpenAI-compatible base URL for server-side LLM features (optional)."
-  type        = string
-  default     = ""
-}
-
-variable "llm_model" {
-  description = "Default LLM model id (optional)."
-  type        = string
-  default     = ""
-}
+# LLM base URL / model / API key are configured on the admin settings page
+# (InstanceSettings), not via deployment env — so they are intentionally absent here.
 
 variable "llm_allowed_servers" {
-  description = "Comma-separated allowlist of LLM base URLs users may pick (optional)."
+  description = "Comma-separated allowlist of LLM base URLs users may pick (env-only SSRF guard, not an instance setting)."
   type        = string
   default     = ""
 }

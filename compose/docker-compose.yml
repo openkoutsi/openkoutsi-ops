@@ -22,8 +22,9 @@ services:
       BRIDGE_URL: ${BRIDGE_URL}
       WAHOO_CLIENT_ID: ${WAHOO_CLIENT_ID}
       WAHOO_BRIDGE_URL: ${WAHOO_BRIDGE_URL}
-      LLM_BASE_URL: ${LLM_BASE_URL}
-      LLM_MODEL: ${LLM_MODEL}
+      # LLM base URL / model / API key are configured on the admin settings page
+      # (stored in InstanceSettings) — not seeded here. LLM_ALLOWED_SERVERS is an
+      # env-only SSRF guard (not an instance setting), so it stays.
       LLM_ALLOWED_SERVERS: ${LLM_ALLOWED_SERVERS}
     volumes:
       - backend_data:/data

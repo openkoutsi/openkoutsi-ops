@@ -129,7 +129,9 @@ Certbot obtains TLS certs via the nginx webroot challenge once DNS resolves.
   ```
 - **Force a poll now:** `sudo systemctl start okdeploy.service`
 - **Logs:** `docker compose -f /opt/openkoutsi/docker-compose.yml logs -f <svc>`
-- **Access dashboard:** `https://stats.<domain>` (basic-auth).
+- **Access dashboard:** `https://stats.<domain>`. Basic-auth credentials come from
+  the `goaccess_htpasswd` variable (generate with `htpasswd -nB admin`), which
+  cloud-init writes to `/opt/openkoutsi/nginx/.htpasswd` on the VM.
 
 ## Fresh-VM cutover (from the existing host)
 

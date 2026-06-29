@@ -30,7 +30,6 @@ llm_allowed_servers = "" # env-only SSRF allowlist (optional)
 # ── Secrets — prefer TF_VAR_* env vars or a gitignored secrets.auto.tfvars ────
 # secret_key           = "..."
 # encryption_key       = "..."
-# llm_api_key          = ""
 # strava_client_secret = "..."
 # bridge_secret        = "..."
 # wahoo_client_secret  = ""

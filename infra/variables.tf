@@ -138,12 +138,8 @@ variable "encryption_key" {
   sensitive   = true
 }
 
-variable "llm_api_key" {
-  description = "Server-side LLM API key (optional)."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
+# LLM API key is admin-managed (InstanceSettings.llm_api_key_enc) — no global
+# deployment fallback, so there is intentionally no llm_api_key variable/secret.
 
 variable "strava_client_secret" {
   description = "Strava OAuth client secret (shared by backend + strava bridge)."

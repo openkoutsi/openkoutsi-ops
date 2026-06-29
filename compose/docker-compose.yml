@@ -31,7 +31,6 @@ services:
     secrets:
       - secret_key
       - encryption_key
-      - llm_api_key
       - strava_client_secret
       - bridge_secret
       - wahoo_client_secret
@@ -166,8 +165,6 @@ secrets:
     file: ./secrets/secret_key
   encryption_key:
     file: ./secrets/encryption_key
-  llm_api_key:
-    file: ./secrets/llm_api_key
   strava_client_secret:
     file: ./secrets/strava_client_secret
   bridge_secret:

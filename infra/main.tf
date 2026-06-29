@@ -33,7 +33,6 @@ locals {
     # Secrets (written to /opt/openkoutsi/secrets/<name>, mode 0400)
     secret_key           = var.secret_key
     encryption_key       = var.encryption_key
-    llm_api_key          = var.llm_api_key
     strava_client_secret = var.strava_client_secret
     bridge_secret        = var.bridge_secret
     wahoo_client_secret  = var.wahoo_client_secret

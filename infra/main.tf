@@ -67,6 +67,26 @@ resource "upcloud_storage" "data" {
   zone    = var.zone
   tier    = "maxiops"
   encrypt = true
+
+  # Daily UpCloud-managed backups of the data device, retained for a week. These
+  # are snapshot-style backups stored as separate backup storage by UpCloud — a
+  # different volume from the live device, protecting against accidental data
+  # loss / device corruption. NOTE: UpCloud backups live in the SAME zone as the
+  # source storage; they are not cross-region, so they are not a full DR/offsite
+  # solution. For offsite copies, also stream dumps to Object Storage elsewhere.
+  backup_rule {
+    interval  = var.backup_interval
+    time      = var.backup_time
+    retention = var.backup_retention
+  }
+
+  # Guard the live data device against accidental destruction. With this set,
+  # `tofu destroy` (and any plan that would delete this storage) fails loudly
+  # instead of wiping every SQLite DB and upload. To intentionally tear the
+  # volume down (e.g. decommissioning staging), remove this block first.
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "upcloud_server" "vm" {

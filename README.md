@@ -22,12 +22,14 @@ a containerized, **poll-based** deployment on UpCloud, fully rebuildable from co
   the lowercase settings field names.
 - **Sensitive data on an encrypted device.** All SQLite DBs and uploads live on a
   dedicated UpCloud **encrypted** storage device mounted at `/opt/openkoutsi/data`,
-  separate from the OS disk.
+  separate from the OS disk. The device is `prevent_destroy`-guarded so a stray
+  `tofu destroy` can't wipe it, and UpCloud takes **daily backups retained for a
+  week** (same-zone snapshots — see [Backups](#backups-and-restore)).
 
 ## Layout
 
 ```
-infra/        OpenTofu — UpCloud server + encrypted storage + firewall + cloud-init
+infra/        OpenTofu — UpCloud server + encrypted storage (backed up) + firewall + cloud-init
 compose/      docker-compose.yml, nginx + certbot + GoAccess config, env.example
 systemd/      okdeploy.service + okdeploy.timer (the poll loop)
 scripts/      okdeploy-pull.sh (pull + recreate changed services)
@@ -157,6 +159,29 @@ Tips:
   the `goaccess_htpasswd` variable (generate with `htpasswd -nB admin`), which
   cloud-init writes to `/opt/openkoutsi/nginx/.htpasswd` on the VM.
 
+### Backups and restore
+
+The encrypted data device (all SQLite DBs + uploads) is backed up by UpCloud on a
+schedule defined in the IaC (`backup_rule` on `upcloud_storage.data`): **daily at
+01:00 UTC, retained 7 days** by default. Tune with `backup_interval` /
+`backup_time` / `backup_retention`.
+
+- **Scope / limits:** these are UpCloud-managed snapshots stored as separate backup
+  storage (a different volume from the live device), so they cover accidental data
+  loss and device corruption. They live in the **same zone** as the source storage,
+  so they are *not* an offsite/cross-region DR copy. If you need offsite copies,
+  add a job that streams `sqlite3 .backup` dumps to Object Storage in another region.
+- **Inspect backups:** UpCloud console → the `<hostname>-data` storage → *Backups*,
+  or via the API/CLI (`upctl storage backup …`).
+- **Restore:** restore the chosen backup over the data device (or restore to a new
+  storage and re-attach it) from the UpCloud console/CLI, then `docker compose up -d`
+  on the VM. The backend runs migrations on start, so a slightly older schema is
+  brought forward automatically.
+- **Accidental-destroy guard:** `upcloud_storage.data` has
+  `lifecycle { prevent_destroy = true }`, so `tofu destroy` and any plan that would
+  delete the device fail loudly. To intentionally decommission it (e.g. tearing down
+  staging), remove that `lifecycle` block first — see Verification below.
+
 ## Fresh-VM cutover (from the existing host)
 
 1. `tofu apply` the new VM and let cloud-init finish.
@@ -193,7 +218,10 @@ Live (staging):
    with valid Let's Encrypt TLS.
 4. Push a trivial backend change → new `latest` → within the timer interval only
    the backend container is recreated (`docker compose ps` shows a new image id).
-5. `tofu destroy` cleanly removes the staging resources.
+5. `tofu destroy` removes the staging resources. The data device is
+   `prevent_destroy`-guarded, so destroy will refuse until you remove the
+   `lifecycle` block on `upcloud_storage.data` (or delete the volume manually in
+   the console) — intentional, so production data can't be torn down by accident.
 
 ## Security notes
 

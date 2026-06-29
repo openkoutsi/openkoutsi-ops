@@ -35,6 +35,41 @@ variable "data_disk_size" {
   default     = 50
 }
 
+# ── Data backups (UpCloud-managed, same-zone snapshots) ─────────────────────
+
+variable "backup_interval" {
+  description = "How often UpCloud backs up the data device: daily or a specific weekday (mon..sun)."
+  type        = string
+  default     = "daily"
+
+  validation {
+    condition     = contains(["daily", "mon", "tue", "wed", "thu", "fri", "sat", "sun"], var.backup_interval)
+    error_message = "backup_interval must be one of: daily, mon, tue, wed, thu, fri, sat, sun."
+  }
+}
+
+variable "backup_time" {
+  description = "Time of day the data backup runs, in UTC \"HHMM\" 24h form (e.g. 0100)."
+  type        = string
+  default     = "0100"
+
+  validation {
+    condition     = can(regex("^([01][0-9]|2[0-3])[0-5][0-9]$", var.backup_time))
+    error_message = "backup_time must be a 24h HHMM string between 0000 and 2359."
+  }
+}
+
+variable "backup_retention" {
+  description = "Number of days UpCloud keeps each data-device backup before pruning it."
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = var.backup_retention >= 1 && var.backup_retention <= 1095
+    error_message = "backup_retention must be between 1 and 1095 days."
+  }
+}
+
 # ── Access control ──────────────────────────────────────────────────────────
 
 variable "admin_cidr" {

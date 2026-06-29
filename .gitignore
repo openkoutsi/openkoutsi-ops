@@ -1,0 +1,18 @@
+# OpenTofu / Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Secret and local var inputs — never commit real values
+*.auto.tfvars
+*.tfvars
+!*.tfvars.example
+backend.hcl
+!backend.hcl.example
+
+# Live secret material (lives on the VM only)
+compose/secrets/*
+!compose/secrets/.gitkeep

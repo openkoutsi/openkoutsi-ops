@@ -1,0 +1,177 @@
+# openkoutsi production stack — pulled image deployment.
+#
+# The VM only PULLS images (built + pushed to GHCR by CI); it never builds.
+# A systemd timer runs `okdeploy-pull.sh` which does `docker compose pull && up -d`,
+# recreating only services whose image digest changed.
+#
+# Secrets are delivered as files under /opt/openkoutsi/secrets/<field-name> and
+# mounted by Compose at /run/secrets/<field-name>, where pydantic-settings
+# (secrets_dir=/run/secrets) reads them. Non-secret config comes from stack.env
+# (plain environment) — secret fields are NEVER set as environment variables.
+
+services:
+  backend:
+    image: ghcr.io/openkoutsi/openkoutsi-backend:latest
+    restart: unless-stopped
+    environment:
+      DATA_DIR: /data
+      FILE_STORAGE_PATH: /data/uploads
+      FRONTEND_URL: ${FRONTEND_URL}
+      API_URL: ${API_URL}
+      STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID}
+      BRIDGE_URL: ${BRIDGE_URL}
+      WAHOO_CLIENT_ID: ${WAHOO_CLIENT_ID}
+      WAHOO_BRIDGE_URL: ${WAHOO_BRIDGE_URL}
+      # LLM base URL / model / API key are configured on the admin settings page
+      # (stored in InstanceSettings) — not seeded here. LLM_ALLOWED_SERVERS is an
+      # env-only SSRF guard (not an instance setting), so it stays.
+      LLM_ALLOWED_SERVERS: ${LLM_ALLOWED_SERVERS}
+    volumes:
+      - backend_data:/data
+    secrets:
+      - secret_key
+      - encryption_key
+      - strava_client_secret
+      - bridge_secret
+      - wahoo_client_secret
+      - wahoo_bridge_secret
+    expose:
+      - "8000"
+
+  web:
+    image: ghcr.io/openkoutsi/openkoutsi-web:latest
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${API_URL}
+    expose:
+      - "3000"
+
+  strava_bridge:
+    image: ghcr.io/openkoutsi/openkoutsi-strava-bridge:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_PATH: /data/bridge.db
+    volumes:
+      - strava_bridge_data:/data
+    secrets:
+      - strava_client_secret
+      - bridge_secret
+    expose:
+      - "8084"
+
+  wahoo_bridge:
+    image: ghcr.io/openkoutsi/openkoutsi-wahoo-bridge:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_PATH: /data/bridge.db
+    volumes:
+      - wahoo_bridge_data:/data
+    secrets:
+      - bridge_secret
+      - wahoo_webhook_token
+    expose:
+      - "8085"
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - web
+      - strava_bridge
+      - wahoo_bridge
+    ports:
+      - "80:80"
+      - "443:443"
+    # Reload every 6h so renewed certs from the certbot service are picked up.
+    command: >
+      sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & exec nginx -g 'daemon off;'"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+      - nginx_logs:/var/log/nginx
+      - goaccess_report:/usr/share/nginx/html/stats:ro
+
+  certbot:
+    image: certbot/certbot:latest
+    restart: unless-stopped
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    # Renew twice daily; nginx picks up new certs on its own reload schedule.
+    entrypoint: >
+      sh -c 'trap exit TERM;
+      while :; do certbot renew --webroot -w /var/www/certbot --quiet;
+      sleep 12h & wait $${!}; done'
+
+  goaccess:
+    image: allinurl/goaccess:latest
+    restart: unless-stopped
+    depends_on:
+      - nginx
+    volumes:
+      - nginx_logs:/var/log/nginx:ro
+      - goaccess_report:/report
+      - ./goaccess/goaccess.conf:/etc/goaccess/goaccess.conf:ro
+    command:
+      - --no-global-config
+      - --config-file=/etc/goaccess/goaccess.conf
+
+# Bind named volumes to the encrypted data device mounted at /opt/openkoutsi/data.
+volumes:
+  backend_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_MOUNT}/backend
+  strava_bridge_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_MOUNT}/strava_bridge
+  wahoo_bridge_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_MOUNT}/wahoo_bridge
+  letsencrypt:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_MOUNT}/letsencrypt
+  certbot_www:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_MOUNT}/certbot_www
+  nginx_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_MOUNT}/nginx_logs
+  goaccess_report:
+
+secrets:
+  secret_key:
+    file: ./secrets/secret_key
+  encryption_key:
+    file: ./secrets/encryption_key
+  strava_client_secret:
+    file: ./secrets/strava_client_secret
+  bridge_secret:
+    file: ./secrets/bridge_secret
+  wahoo_client_secret:
+    file: ./secrets/wahoo_client_secret
+  wahoo_bridge_secret:
+    file: ./secrets/wahoo_bridge_secret
+  wahoo_webhook_token:
+    file: ./secrets/wahoo_webhook_token

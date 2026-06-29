@@ -1,0 +1,10 @@
+[Unit]
+Description=Run okdeploy.service on a schedule to poll GHCR for new images
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=2min
+Unit=okdeploy.service
+
+[Install]
+WantedBy=timers.target

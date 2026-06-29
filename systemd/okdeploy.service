@@ -1,0 +1,9 @@
+[Unit]
+Description=openkoutsi poll-based deploy (pull latest images and recreate changed services)
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/openkoutsi
+ExecStart=/opt/openkoutsi/scripts/okdeploy-pull.sh

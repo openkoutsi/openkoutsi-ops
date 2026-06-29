@@ -1,0 +1,16 @@
+# Remote state on UpCloud Managed Object Storage (S3-compatible).
+# Copy to backend.hcl (gitignored) and run:  tofu init -backend-config=backend.hcl
+#
+# Create the bucket and access/secret keys in the UpCloud Object Storage console,
+# then export them for the AWS SDK that the s3 backend uses:
+#   export AWS_ACCESS_KEY_ID=...
+#   export AWS_SECRET_ACCESS_KEY=...
+
+bucket = "openkoutsi-tfstate"
+key    = "openkoutsi/prod/terraform.tfstate"
+region = "europe-1" # UpCloud Object Storage region label
+
+# UpCloud Object Storage S3 endpoint (replace with your account's endpoint host).
+endpoints = {
+  s3 = "https://<your-objstore-host>.upcloudobjects.com"
+}

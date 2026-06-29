@@ -1,0 +1,42 @@
+# Copy to terraform.tfvars (gitignored) or pass secrets via TF_VAR_* env vars.
+# Non-secret values can live here; keep real secrets out of version control.
+
+# ── Infrastructure ──────────────────────────────────────────────────────────
+zone           = "fi-hel2"
+server_plan    = "1xCPU-2GB"
+hostname       = "openkoutsi-prod"
+data_disk_size = 50
+
+# ── Access ──────────────────────────────────────────────────────────────────
+admin_cidr      = "203.0.113.10/32" # your admin IP — SSH is allowed only from here
+ssh_public_keys = ["ssh-ed25519 AAAA... you@host"]
+
+# ── DNS / domains (set matching A records at your registrar) ─────────────────
+domain        = "openkoutsi.example"
+certbot_email = "admin@openkoutsi.example"
+# api_host / strava_bridge_host / wahoo_bridge_host / stats_host default to
+# api / bridge / wahoo-bridge / stats — override only if needed.
+
+# ── Non-secret app config ────────────────────────────────────────────────────
+strava_client_id    = "12345"
+wahoo_client_id     = ""
+llm_base_url        = ""
+llm_model           = ""
+llm_allowed_servers = ""
+
+# ── Dashboard auth (htpasswd -nB admin) ──────────────────────────────────────
+# goaccess_htpasswd = "admin:$2y$05$..."   # set via TF_VAR_goaccess_htpasswd
+
+# ── Secrets — prefer TF_VAR_* env vars or a gitignored secrets.auto.tfvars ────
+# secret_key           = "..."
+# encryption_key       = "..."
+# llm_api_key          = ""
+# strava_client_secret = "..."
+# bridge_secret        = "..."
+# wahoo_client_secret  = ""
+# wahoo_bridge_secret  = "..."
+# wahoo_webhook_token  = "..."
+
+# ── GHCR (leave empty — images are public) ───────────────────────────────────
+# ghcr_username = ""
+# ghcr_token    = ""

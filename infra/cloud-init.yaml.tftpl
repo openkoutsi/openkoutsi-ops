@@ -1,0 +1,181 @@
+#cloud-config
+# Rendered by OpenTofu (templatefile) and passed as user-data. This is the ONLY
+# place the VM is configured. Re-provision to change the box.
+#
+# NOTE: user-data is readable from inside the instance and contains secrets —
+# acceptable per issue #5 ("cloud-init only"); the data device is encrypted.
+
+users:
+  - name: deploy
+    groups: [docker, sudo]
+    shell: /bin/bash
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    ssh_authorized_keys:
+%{ for key in ssh_public_keys ~}
+      - ${key}
+%{ endfor ~}
+
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+
+write_files:
+  # ── App deployment config ──────────────────────────────────────────────
+  - path: /opt/openkoutsi/docker-compose.yml
+    permissions: "0644"
+    content: |
+      ${indent(6, docker_compose)}
+
+  - path: /opt/openkoutsi/nginx/nginx.conf
+    permissions: "0644"
+    content: |
+      ${indent(6, nginx_conf)}
+
+  - path: /opt/openkoutsi/nginx/conf.d/api.conf
+    permissions: "0644"
+    content: |
+      ${indent(6, nginx_api)}
+
+  - path: /opt/openkoutsi/nginx/conf.d/web.conf
+    permissions: "0644"
+    content: |
+      ${indent(6, nginx_web)}
+
+  - path: /opt/openkoutsi/nginx/conf.d/strava-bridge.conf
+    permissions: "0644"
+    content: |
+      ${indent(6, nginx_strava_bridge)}
+
+  - path: /opt/openkoutsi/nginx/conf.d/wahoo-bridge.conf
+    permissions: "0644"
+    content: |
+      ${indent(6, nginx_wahoo_bridge)}
+
+  - path: /opt/openkoutsi/nginx/conf.d/goaccess.conf
+    permissions: "0644"
+    content: |
+      ${indent(6, nginx_goaccess)}
+
+  - path: /opt/openkoutsi/goaccess/goaccess.conf
+    permissions: "0644"
+    content: |
+      ${indent(6, goaccess_conf)}
+
+  # ── Non-secret environment (plain env, NOT secrets) ────────────────────
+  - path: /opt/openkoutsi/stack.env
+    permissions: "0644"
+    content: |
+      DATA_MOUNT=${data_mount}
+      FRONTEND_URL=https://${web_fqdn}
+      API_URL=https://${api_fqdn}
+      BRIDGE_URL=https://${strava_bridge_fqdn}
+      WAHOO_BRIDGE_URL=https://${wahoo_bridge_fqdn}
+      STRAVA_CLIENT_ID=${strava_client_id}
+      WAHOO_CLIENT_ID=${wahoo_client_id}
+      LLM_BASE_URL=${llm_base_url}
+      LLM_MODEL=${llm_model}
+      LLM_ALLOWED_SERVERS=${llm_allowed_servers}
+
+  # ── GoAccess dashboard basic-auth ──────────────────────────────────────
+  - path: /opt/openkoutsi/nginx/.htpasswd
+    permissions: "0640"
+    content: |
+      ${goaccess_htpasswd}
+
+  # ── Poll-based deploy unit + timer + script ────────────────────────────
+  - path: /etc/systemd/system/okdeploy.service
+    permissions: "0644"
+    content: |
+      ${indent(6, okdeploy_service)}
+
+  - path: /etc/systemd/system/okdeploy.timer
+    permissions: "0644"
+    content: |
+      ${indent(6, okdeploy_timer)}
+
+  - path: /opt/openkoutsi/scripts/okdeploy-pull.sh
+    permissions: "0755"
+    content: |
+      ${indent(6, okdeploy_pull)}
+
+  # ── Secrets — one file per pydantic field, written 0400 ────────────────
+  # File names MUST equal the lowercase settings field names so that
+  # pydantic-settings' secrets_dir=/run/secrets reads them.
+  - path: /opt/openkoutsi/secrets/secret_key
+    permissions: "0400"
+    content: ${secret_key}
+  - path: /opt/openkoutsi/secrets/encryption_key
+    permissions: "0400"
+    content: ${encryption_key}
+  - path: /opt/openkoutsi/secrets/llm_api_key
+    permissions: "0400"
+    content: ${llm_api_key}
+  - path: /opt/openkoutsi/secrets/strava_client_secret
+    permissions: "0400"
+    content: ${strava_client_secret}
+  - path: /opt/openkoutsi/secrets/bridge_secret
+    permissions: "0400"
+    content: ${bridge_secret}
+  - path: /opt/openkoutsi/secrets/wahoo_client_secret
+    permissions: "0400"
+    content: ${wahoo_client_secret}
+  - path: /opt/openkoutsi/secrets/wahoo_bridge_secret
+    permissions: "0400"
+    content: ${wahoo_bridge_secret}
+  - path: /opt/openkoutsi/secrets/wahoo_webhook_token
+    permissions: "0400"
+    content: ${wahoo_webhook_token}
+
+  # ── First-boot provisioning script ─────────────────────────────────────
+  - path: /opt/openkoutsi/scripts/bootstrap.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      DATA_MOUNT="${data_mount}"
+      DATA_DEV="/dev/vdb"   # second virtio device = the encrypted data storage
+
+      # Install Docker engine + compose plugin from Docker's apt repo.
+      install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+        -o /etc/apt/keyrings/docker.asc
+      chmod a+r /etc/apt/keyrings/docker.asc
+      . /etc/os-release
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
+      https://download.docker.com/linux/ubuntu $${VERSION_CODENAME} stable" \
+        > /etc/apt/sources.list.d/docker.list
+      apt-get update -y
+      apt-get install -y docker-ce docker-ce-cli containerd.io \
+        docker-buildx-plugin docker-compose-plugin
+      systemctl enable --now docker
+
+      # Format (first boot only) and mount the encrypted data device.
+      if ! blkid "$${DATA_DEV}" >/dev/null 2>&1; then
+        mkfs.ext4 -L okdata "$${DATA_DEV}"
+      fi
+      mkdir -p "$${DATA_MOUNT}"
+      grep -q "$${DATA_MOUNT}" /etc/fstab || \
+        echo "LABEL=okdata $${DATA_MOUNT} ext4 defaults,noatime 0 2" >> /etc/fstab
+      mount -a
+      mkdir -p "$${DATA_MOUNT}"/{backend,strava_bridge,wahoo_bridge,letsencrypt,certbot_www,nginx_logs}
+
+      chown -R deploy:deploy /opt/openkoutsi
+
+      # Optional: log in to GHCR for private packages (no-op when public).
+      if [ -n "${ghcr_username}" ] && [ -n "${ghcr_token}" ]; then
+        echo "${ghcr_token}" | docker login ghcr.io -u "${ghcr_username}" --password-stdin
+      fi
+
+      # Bring the stack up and enable the poll timer.
+      cd /opt/openkoutsi
+      docker compose pull -q || true
+      docker compose up -d
+      systemctl daemon-reload
+      systemctl enable --now okdeploy.timer
+
+runcmd:
+  - [bash, /opt/openkoutsi/scripts/bootstrap.sh]

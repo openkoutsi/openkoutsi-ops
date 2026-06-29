@@ -14,6 +14,7 @@ ssh_public_keys = ["ssh-ed25519 AAAA... you@host"]
 # ── DNS / domains (set matching A records at your registrar) ─────────────────
 domain        = "openkoutsi.example"
 certbot_email = "admin@openkoutsi.example"
+# certbot_staging = true   # use LE staging while testing first-boot, then set false
 # api_host / strava_bridge_host / wahoo_bridge_host / stats_host default to
 # api / bridge / wahoo-bridge / stats — override only if needed.
 

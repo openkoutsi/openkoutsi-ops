@@ -85,6 +85,12 @@ variable "certbot_email" {
   type        = string
 }
 
+variable "certbot_staging" {
+  description = "Use the Let's Encrypt staging environment (untrusted certs, no rate limits). Set true while testing first-boot, then false for real certs."
+  type        = bool
+  default     = false
+}
+
 # ── Non-secret application config ───────────────────────────────────────────
 
 # LLM base URL / model / API key are configured on the admin settings page

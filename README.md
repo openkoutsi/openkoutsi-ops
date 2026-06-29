@@ -113,7 +113,31 @@ registrar**, all pointing at the `public_ipv4` output:
 | `wahoo-bridge`   | Wahoo bridge     |
 | `stats`          | GoAccess report  |
 
-Certbot obtains TLS certs via the nginx webroot challenge once DNS resolves.
+### 5. TLS certificates (first-boot bootstrap)
+
+nginx terminates TLS with a **single Let's Encrypt SAN cert** (lineage
+`openkoutsi`) covering all five hostnames. Because a fresh VM has no cert yet,
+`scripts/init-certs.sh` breaks the usual nginx⇄certbot deadlock: it writes a
+throwaway self-signed cert so nginx can start, brings nginx up, obtains the real
+cert over the HTTP-01 webroot challenge, then reloads nginx onto it.
+
+cloud-init runs this automatically at the end of first boot — but the real cert
+can only be issued **once the registrar A records (step 4) resolve to the VM**.
+On a brand-new VM that's usually not true yet, so the first attempt fails
+gracefully and nginx keeps serving the temporary self-signed cert. After DNS has
+propagated, issue the real cert:
+
+```bash
+ssh deploy@<ip>
+cd /opt/openkoutsi && bash scripts/init-certs.sh
+```
+
+Tips:
+- Set `certbot_staging = true` while testing to use Let's Encrypt's staging CA
+  (untrusted certs, no rate limits); flip to `false` and re-run for real certs.
+- Force a re-issue at any time with `FORCE_CERT=1 bash scripts/init-certs.sh`.
+- Renewals are automatic: the `certbot` service renews every 12h and nginx
+  reloads every 6h to pick up the new cert.
 
 ## Operations
 

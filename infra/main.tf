@@ -19,6 +19,7 @@ locals {
     wahoo_bridge_fqdn  = local.wahoo_bridge_fqdn
     stats_fqdn         = local.stats_fqdn
     certbot_email      = var.certbot_email
+    certbot_staging    = var.certbot_staging ? "1" : "0"
 
     # Non-secret app config. LLM base URL / model are admin-managed (InstanceSettings),
     # so they are not seeded here; LLM_ALLOWED_SERVERS is an env-only SSRF guard.
@@ -55,6 +56,7 @@ locals {
     okdeploy_service    = file("${path.module}/../systemd/okdeploy.service")
     okdeploy_timer      = file("${path.module}/../systemd/okdeploy.timer")
     okdeploy_pull       = file("${path.module}/../scripts/okdeploy-pull.sh")
+    init_certs          = file("${path.module}/../scripts/init-certs.sh")
   })
 }
 

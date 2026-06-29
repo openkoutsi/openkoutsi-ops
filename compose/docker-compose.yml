@@ -84,6 +84,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    # Reload every 6h so renewed certs from the certbot service are picked up.
+    command: >
+      sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & exec nginx -g 'daemon off;'"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro

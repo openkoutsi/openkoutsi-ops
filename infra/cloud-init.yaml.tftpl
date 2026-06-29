@@ -76,6 +76,10 @@ write_files:
       STRAVA_CLIENT_ID=${strava_client_id}
       WAHOO_CLIENT_ID=${wahoo_client_id}
       LLM_ALLOWED_SERVERS=${llm_allowed_servers}
+      CERT_NAME=openkoutsi
+      CERT_DOMAINS=${web_fqdn} ${api_fqdn} ${strava_bridge_fqdn} ${wahoo_bridge_fqdn} ${stats_fqdn}
+      CERT_EMAIL=${certbot_email}
+      CERT_STAGING=${certbot_staging}
 
   # ── GoAccess dashboard basic-auth ──────────────────────────────────────
   - path: /opt/openkoutsi/nginx/.htpasswd
@@ -98,6 +102,11 @@ write_files:
     permissions: "0755"
     content: |
       ${indent(6, okdeploy_pull)}
+
+  - path: /opt/openkoutsi/scripts/init-certs.sh
+    permissions: "0755"
+    content: |
+      ${indent(6, init_certs)}
 
   # ── Secrets — one file per pydantic field, written 0400 ────────────────
   # File names MUST equal the lowercase settings field names so that
@@ -171,6 +180,14 @@ write_files:
       # Bring the stack up and enable the poll timer.
       cd /opt/openkoutsi
       docker compose pull -q || true
+
+      # First-boot TLS: obtain the real cert before the full stack comes up, so
+      # nginx serves valid HTTPS immediately. Best-effort — if DNS isn't pointing
+      # at this VM yet the request fails and nginx keeps the temporary self-signed
+      # cert; re-run `bash scripts/init-certs.sh` once DNS resolves.
+      bash /opt/openkoutsi/scripts/init-certs.sh || \
+        echo "init-certs: cert bootstrap failed (DNS not ready?); re-run after DNS points here."
+
       docker compose up -d
       systemctl daemon-reload
       systemctl enable --now okdeploy.timer

@@ -111,10 +111,13 @@ resource "upcloud_server" "vm" {
     encrypt = true
   }
 
-  # Attach the dedicated encrypted data device.
+  # Attach the dedicated encrypted data device. Pinned to virtio position 1
+  # (the boot template is virtio:0) so it is consistently /dev/vdb, which
+  # cloud-init formats and mounts.
   storage_devices {
-    storage = upcloud_storage.data.id
-    address = "virtio:1"
+    storage          = upcloud_storage.data.id
+    address          = "virtio"
+    address_position = "1"
   }
 
   login {

@@ -1,14 +1,15 @@
 # ── Infrastructure shape ────────────────────────────────────────────────────
 
 variable "zone" {
-  description = "UpCloud zone to deploy into, e.g. fi-hel2."
+  description = "UpCloud zone to deploy into. Defaults to fi-hel1 (where the STARTER-2xCPU-2GB plan is available)."
   type        = string
+  default     = "fi-hel1"
 }
 
 variable "server_plan" {
-  description = "UpCloud server plan, e.g. 1xCPU-2GB."
+  description = "UpCloud server plan. Defaults to the Starter tier STARTER-2xCPU-2GB (2 cores, 2 GB RAM, 30 GB bundled storage, ~€8/mo)."
   type        = string
-  default     = "1xCPU-2GB"
+  default     = "STARTER-2xCPU-2GB"
 }
 
 variable "hostname" {
@@ -24,9 +25,9 @@ variable "os_template" {
 }
 
 variable "os_disk_size" {
-  description = "Size of the OS boot disk in GiB."
+  description = "Size of the OS boot disk in GiB. Matches the STARTER-2xCPU-2GB plan's 30 GB bundled storage."
   type        = number
-  default     = 25
+  default     = 30
 }
 
 variable "data_disk_size" {

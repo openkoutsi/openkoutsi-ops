@@ -49,9 +49,9 @@ docker compose up -d nginx
 sleep 3
 
 # 3. Request the real certificate (one SAN cert covering every hostname).
-domain_args=""
+domain_args=()
 for d in ${CERT_DOMAINS}; do
-  domain_args="${domain_args} -d ${d}"
+  domain_args+=(-d "${d}")
 done
 
 staging_arg=""
@@ -65,10 +65,10 @@ rm -rf "${DATA_MOUNT}/letsencrypt/live/${CERT_NAME}" \
        "${DATA_MOUNT}/letsencrypt/archive/${CERT_NAME}" \
        "${DATA_MOUNT}/letsencrypt/renewal/${CERT_NAME}.conf"
 
-echo "init-certs: requesting certificate for:${domain_args}"
+echo "init-certs: requesting certificate for: ${domain_args[*]}"
 docker compose run --rm --entrypoint certbot certbot \
   certonly --webroot -w /var/www/certbot \
-  --cert-name "${CERT_NAME}" ${domain_args} \
+  --cert-name "${CERT_NAME}" "${domain_args[@]}" \
   --email "${CERT_EMAIL}" --agree-tos --no-eff-email \
   --non-interactive ${staging_arg}
 

@@ -228,6 +228,11 @@ schedule defined in the IaC (`backup_rule` on `upcloud_storage.data`): **daily a
 
 ## Verification
 
+> The static checks below run automatically on every pull request via
+> `.github/workflows/ci.yml` (OpenTofu `fmt`/`validate`/`tflint`, `shellcheck`,
+> `docker compose config`, and `actionlint`). Run them locally before pushing to
+> get the same feedback faster.
+
 Static / dry-run (no UpCloud account needed):
 
 ```bash

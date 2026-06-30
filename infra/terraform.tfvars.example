@@ -2,8 +2,8 @@
 # Non-secret values can live here; keep real secrets out of version control.
 
 # ── Infrastructure ──────────────────────────────────────────────────────────
-zone           = "fi-hel2"
-server_plan    = "1xCPU-2GB"
+zone           = "fi-hel1"
+server_plan    = "STARTER-2xCPU-2GB"
 hostname       = "openkoutsi-prod"
 data_disk_size = 50
 

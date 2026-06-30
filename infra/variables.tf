@@ -1,8 +1,9 @@
 # ── Infrastructure shape ────────────────────────────────────────────────────
 
 variable "zone" {
-  description = "UpCloud zone to deploy into, e.g. fi-hel2."
+  description = "UpCloud zone to deploy into. Defaults to fi-hel1 (where the STARTER-2xCPU-2GB plan is available)."
   type        = string
+  default     = "fi-hel1"
 }
 
 variable "server_plan" {

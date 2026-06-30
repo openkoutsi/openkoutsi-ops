@@ -80,6 +80,7 @@ services:
       - web
       - strava_bridge
       - wahoo_bridge
+      - dozzle
     ports:
       - "80:80"
       - "443:443"
@@ -120,6 +121,32 @@ services:
       - --no-global-config
       - --config-file=/etc/goaccess/goaccess.conf
 
+  # Centralized log collection: tails every container's stdout/stderr via the
+  # Docker Engine API and writes per-service, daily-rotated files to the
+  # service_logs volume on the encrypted data device. No app changes — the
+  # services keep logging to stdout. (nginx persists its own access/error logs
+  # via nginx_logs, so it is excluded below to avoid duplication.)
+  vector:
+    image: timberio/vector:0.40.0-alpine
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - service_logs:/logs
+      - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
+    command: ["--config", "/etc/vector/vector.yaml"]
+
+  # Real-time browser log viewer for all containers, proxied by nginx at
+  # logs.<domain> behind the same basic-auth as the GoAccess dashboard.
+  dozzle:
+    image: amir20/dozzle:v8.10.6
+    restart: unless-stopped
+    environment:
+      DOZZLE_NO_ANALYTICS: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    expose:
+      - "8080"
+
 # Bind named volumes to the encrypted data device mounted at /opt/openkoutsi/data.
 volumes:
   backend_data:
@@ -158,6 +185,12 @@ volumes:
       type: none
       o: bind
       device: ${DATA_MOUNT}/nginx_logs
+  service_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_MOUNT}/service_logs
   goaccess_report:
 
 secrets:

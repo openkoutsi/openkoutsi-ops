@@ -5,6 +5,7 @@ locals {
   strava_bridge_fqdn = "${var.strava_bridge_host}.${var.domain}"
   wahoo_bridge_fqdn  = "${var.wahoo_bridge_host}.${var.domain}"
   stats_fqdn         = "${var.stats_host}.${var.domain}"
+  logs_fqdn          = "${var.logs_host}.${var.domain}"
 
   data_mount = "/opt/openkoutsi/data"
 
@@ -18,8 +19,12 @@ locals {
     strava_bridge_fqdn = local.strava_bridge_fqdn
     wahoo_bridge_fqdn  = local.wahoo_bridge_fqdn
     stats_fqdn         = local.stats_fqdn
+    logs_fqdn          = local.logs_fqdn
     certbot_email      = var.certbot_email
     certbot_staging    = var.certbot_staging ? "1" : "0"
+
+    # Service-log retention (days) enforced by the oklog-prune timer.
+    log_retention_days = var.log_retention_days
 
     # Non-secret app config. LLM base URL / model are admin-managed (InstanceSettings),
     # so they are not seeded here; LLM_ALLOWED_SERVERS is an env-only SSRF guard.
@@ -51,10 +56,15 @@ locals {
     nginx_strava_bridge = templatefile("${path.module}/../compose/nginx/conf.d/strava-bridge.conf", { server_name = local.strava_bridge_fqdn })
     nginx_wahoo_bridge  = templatefile("${path.module}/../compose/nginx/conf.d/wahoo-bridge.conf", { server_name = local.wahoo_bridge_fqdn })
     nginx_goaccess      = templatefile("${path.module}/../compose/nginx/conf.d/goaccess.conf", { server_name = local.stats_fqdn })
+    nginx_logs          = templatefile("${path.module}/../compose/nginx/conf.d/logs.conf", { server_name = local.logs_fqdn })
     goaccess_conf       = templatefile("${path.module}/../compose/goaccess/goaccess.conf", { stats_fqdn = local.stats_fqdn })
+    vector_conf         = file("${path.module}/../compose/vector/vector.yaml")
     okdeploy_service    = file("${path.module}/../systemd/okdeploy.service")
     okdeploy_timer      = file("${path.module}/../systemd/okdeploy.timer")
     okdeploy_pull       = file("${path.module}/../scripts/okdeploy-pull.sh")
+    oklog_prune_service = file("${path.module}/../systemd/oklog-prune.service")
+    oklog_prune_timer   = file("${path.module}/../systemd/oklog-prune.timer")
+    oklog_prune         = file("${path.module}/../scripts/oklog-prune.sh")
     init_certs          = file("${path.module}/../scripts/init-certs.sh")
   })
 }

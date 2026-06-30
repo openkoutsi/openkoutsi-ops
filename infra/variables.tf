@@ -70,6 +70,19 @@ variable "backup_retention" {
   }
 }
 
+# ── Service logs (Vector → files on the data device, pruned on a timer) ─────
+
+variable "log_retention_days" {
+  description = "Days to keep per-service log files under the service_logs volume before the oklog-prune timer deletes them."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.log_retention_days >= 1 && var.log_retention_days <= 3650
+    error_message = "log_retention_days must be between 1 and 3650 days."
+  }
+}
+
 # ── Access control ──────────────────────────────────────────────────────────
 
 variable "admin_cidr" {
@@ -113,6 +126,12 @@ variable "stats_host" {
   description = "Hostname for the GoAccess access-log dashboard."
   type        = string
   default     = "stats"
+}
+
+variable "logs_host" {
+  description = "Hostname for the Dozzle live service-log viewer."
+  type        = string
+  default     = "logs"
 }
 
 variable "certbot_email" {

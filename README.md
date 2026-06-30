@@ -30,9 +30,9 @@ a containerized, **poll-based** deployment on UpCloud, fully rebuildable from co
 
 ```
 infra/        OpenTofu — UpCloud server + encrypted storage (backed up) + firewall + cloud-init
-compose/      docker-compose.yml, nginx + certbot + GoAccess config, env.example
-systemd/      okdeploy.service + okdeploy.timer (the poll loop)
-scripts/      okdeploy-pull.sh (pull + recreate changed services)
+compose/      docker-compose.yml, nginx + certbot + GoAccess + Vector config, env.example
+systemd/      okdeploy.service + okdeploy.timer (poll loop), oklog-prune.* (log retention)
+scripts/      okdeploy-pull.sh (pull + recreate changed services), oklog-prune.sh (prune old logs)
 ```
 
 The VM is configured **by cloud-init only** (`infra/cloud-init.yaml.tftpl`):
@@ -52,6 +52,12 @@ The VM tracks the `latest` tag; CI also pushes immutable `sha-<sha>` tags for
 rollback. **Packages are public**, so the VM needs no pull credentials. (To switch
 to private packages, set `ghcr_username`/`ghcr_token` and cloud-init will
 `docker login`.)
+
+Alongside the app images the stack runs a few pinned third-party containers:
+`nginx` (TLS/reverse proxy), `certbot` (TLS renewal), `allinurl/goaccess`
+(nginx-log dashboard), `timberio/vector` (collects every container's stdout into
+per-service log files), and `amir20/dozzle` (live log viewer). See
+[Observability](#observability) for the logging pieces.
 
 ## Provisioning
 
@@ -114,11 +120,13 @@ registrar**, all pointing at the `public_ipv4` output:
 | `bridge`         | Strava bridge    |
 | `wahoo-bridge`   | Wahoo bridge     |
 | `stats`          | GoAccess report  |
+| `logs`           | Dozzle log viewer |
 
 ### 5. TLS certificates (first-boot bootstrap)
 
 nginx terminates TLS with a **single Let's Encrypt SAN cert** (lineage
-`openkoutsi`) covering all five hostnames. Because a fresh VM has no cert yet,
+`openkoutsi`) covering all six hostnames (apex, `api`, `bridge`, `wahoo-bridge`,
+`stats`, `logs`). Because a fresh VM has no cert yet,
 `scripts/init-certs.sh` breaks the usual nginx⇄certbot deadlock: it writes a
 throwaway self-signed cert so nginx can start, brings nginx up, obtains the real
 cert over the HTTP-01 webroot challenge, then reloads nginx onto it.
@@ -154,10 +162,31 @@ Tips:
   docker compose up -d backend
   ```
 - **Force a poll now:** `sudo systemctl start okdeploy.service`
-- **Logs:** `docker compose -f /opt/openkoutsi/docker-compose.yml logs -f <svc>`
-- **Access dashboard:** `https://stats.<domain>`. Basic-auth credentials come from
-  the `goaccess_htpasswd` variable (generate with `htpasswd -nB admin`), which
-  cloud-init writes to `/opt/openkoutsi/nginx/.htpasswd` on the VM.
+- **Live container logs (shell):** `docker compose -f /opt/openkoutsi/docker-compose.yml logs -f <svc>`
+- **Access dashboard (nginx traffic):** `https://stats.<domain>`. Basic-auth
+  credentials come from the `goaccess_htpasswd` variable (generate with
+  `htpasswd -nB admin`), which cloud-init writes to `/opt/openkoutsi/nginx/.htpasswd`.
+- **Service logs (web/backend/bridges):** see [Observability](#observability).
+
+### Observability
+
+Two complementary views, both behind the same basic-auth (`goaccess_htpasswd`):
+
+- **nginx traffic** — GoAccess renders the nginx access log as a real-time HTML
+  report at `https://stats.<domain>` (see above).
+- **Service logs** — the application containers (backend, web, both bridges) log
+  to stdout, which is ephemeral and wiped whenever the poll loop recreates a
+  container. A **Vector** collector tails every container's output through the
+  Docker API and writes it as per-service, daily-rotated files to the
+  `service_logs` volume on the encrypted data device
+  (`${DATA_MOUNT}/service_logs/<container>/<date>.log`). View them either:
+  - **In the browser:** `https://logs.<domain>` — a **Dozzle** live log viewer
+    (real-time tail/search across all containers).
+  - **On the box:** `tail -f`/`grep` the files under `${DATA_MOUNT}/service_logs/`.
+
+  Retention is enforced by the `oklog-prune.timer` (daily), which deletes files
+  older than `LOG_RETENTION_DAYS` (default 30, tunable via the `log_retention_days`
+  variable). nginx logs are excluded from Vector since GoAccess already covers them.
 
 ### Backups and restore
 

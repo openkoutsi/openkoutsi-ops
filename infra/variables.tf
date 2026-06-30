@@ -6,9 +6,9 @@ variable "zone" {
 }
 
 variable "server_plan" {
-  description = "UpCloud server plan, e.g. 1xCPU-2GB."
+  description = "UpCloud server plan. Defaults to the Starter tier DEV-1xCPU-2GB (1 core, 2 GB RAM, 30 GB bundled storage, ~€8/mo). Override if your account exposes a newer Starter plan name."
   type        = string
-  default     = "1xCPU-2GB"
+  default     = "DEV-1xCPU-2GB"
 }
 
 variable "hostname" {
@@ -24,9 +24,9 @@ variable "os_template" {
 }
 
 variable "os_disk_size" {
-  description = "Size of the OS boot disk in GiB."
+  description = "Size of the OS boot disk in GiB. Matches the DEV-1xCPU-2GB Starter plan's 30 GB bundled storage."
   type        = number
-  default     = 25
+  default     = 30
 }
 
 variable "data_disk_size" {

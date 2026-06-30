@@ -1,0 +1,9 @@
+[Unit]
+Description=openkoutsi service-log retention prune (delete old per-service log files)
+Wants=local-fs.target
+After=local-fs.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/openkoutsi
+ExecStart=/opt/openkoutsi/scripts/oklog-prune.sh

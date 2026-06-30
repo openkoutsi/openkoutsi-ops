@@ -1,0 +1,36 @@
+# Vector — centralized log collection for the openkoutsi stack.
+#
+# Reads every container's stdout/stderr through the Docker Engine API (the
+# mounted /var/run/docker.sock) and writes them as per-service, daily-rotated
+# plain-text files onto the service_logs volume (bound to the encrypted data
+# device at ${DATA_MOUNT}/service_logs). Services keep logging to stdout — no
+# application changes are required.
+
+# Internal checkpoints/state. Lives on the log volume (dotted dir, so the
+# retention prune that targets *.log files leaves it alone).
+data_dir: /logs/.vector
+
+sources:
+  docker:
+    type: docker_logs
+
+transforms:
+  # Keep only the application containers. Skip the logging/edge stack itself:
+  # vector (avoids ingesting its own output), dozzle, goaccess, certbot, and
+  # nginx — nginx already persists its access/error logs via the nginx_logs
+  # volume + GoAccess dashboard. Matching is on the compose container name
+  # (e.g. "openkoutsi-vector-1"), so we match the service segment between the
+  # project prefix and the replica index, tolerating both "-" and "_" naming.
+  app_only:
+    type: filter
+    inputs: [docker]
+    condition: '!match(string!(.container_name), r''[-_](vector|dozzle|goaccess|certbot|nginx)[-_]'')'
+
+sinks:
+  files:
+    type: file
+    inputs: [app_only]
+    # One subdirectory per container, one file per day → natural rotation.
+    path: "/logs/{{ container_name }}/%Y-%m-%d.log"
+    encoding:
+      codec: text

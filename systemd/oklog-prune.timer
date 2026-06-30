@@ -1,0 +1,10 @@
+[Unit]
+Description=Run oklog-prune.service daily to enforce service-log retention
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+Unit=oklog-prune.service
+
+[Install]
+WantedBy=timers.target

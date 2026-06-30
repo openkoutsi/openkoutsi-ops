@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: OpenTofu fmt / validate / tflint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+
+      - name: tofu fmt
+        run: tofu fmt -check -recursive
+
+      # No backend access in CI: validate the configuration only.
+      - name: tofu init
+        run: tofu init -backend=false
+
+      - name: tofu validate
+        run: tofu validate
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: tflint
+        run: |
+          tflint --init
+          tflint
+
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck scripts/*.sh
+
+  compose:
+    name: Docker Compose validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: compose
+    steps:
+      - uses: actions/checkout@v4
+
+      # docker compose config resolves ${VAR} interpolation and checks that the
+      # secret files exist, so synthesize CI-only placeholders for both. Real
+      # values live only on the VM (see .gitignore).
+      - name: Synthesize placeholder env + secrets
+        run: |
+          cat > .env <<'EOF'
+          DATA_MOUNT=/opt/openkoutsi/data
+          FRONTEND_URL=https://example.invalid
+          API_URL=https://api.example.invalid
+          BRIDGE_URL=https://bridge.example.invalid
+          WAHOO_BRIDGE_URL=https://wahoo-bridge.example.invalid
+          STRAVA_CLIENT_ID=0
+          WAHOO_CLIENT_ID=0
+          LLM_ALLOWED_SERVERS=
+          EOF
+          for s in secret_key encryption_key strava_client_secret bridge_secret \
+                   wahoo_client_secret wahoo_bridge_secret wahoo_webhook_token; do
+            echo placeholder > "secrets/$s"
+          done
+
+      - name: docker compose config
+        run: docker compose config -q
+
+  actionlint:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:latest -color

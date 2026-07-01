@@ -211,6 +211,14 @@ schedule defined in the IaC (`backup_rule` on `upcloud_storage.data`): **daily a
   delete the device fail loudly. To intentionally decommission it (e.g. tearing down
   staging), remove that `lifecycle` block first — see Verification below.
 
+## Scaling
+
+openkoutsi is a single, stateful VM (SQLite on one encrypted device), so it
+**scales vertically** — resize the box to a larger UpCloud plan. A plan change is
+an **in-place** resize: same VM, **same IP, no DNS change**. See
+**[SCALING.md](SCALING.md)** for the step-by-step, the OS-disk/zone caveats, and
+when to fall back to the fresh-VM cutover below instead.
+
 ## Fresh-VM cutover (from the existing host)
 
 1. `tofu apply` the new VM and let cloud-init finish.

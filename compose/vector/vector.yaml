@@ -2,9 +2,9 @@
 #
 # Reads every container's stdout/stderr through the Docker Engine API (the
 # mounted /var/run/docker.sock) and writes them as per-service, daily-rotated
-# plain-text files onto the service_logs volume (bound to the encrypted data
-# device at ${DATA_MOUNT}/service_logs). Services keep logging to stdout — no
-# application changes are required.
+# plain-text files onto the service_logs volume (bound to the VM's OS disk at
+# ${LOG_MOUNT}/service_logs, not the encrypted data device). Services keep logging
+# to stdout — no application changes are required.
 
 # Internal checkpoints/state. Lives on the log volume (dotted dir, so the
 # retention prune that targets *.log files leaves it alone).

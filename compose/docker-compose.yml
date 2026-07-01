@@ -123,9 +123,9 @@ services:
 
   # Centralized log collection: tails every container's stdout/stderr via the
   # Docker Engine API and writes per-service, daily-rotated files to the
-  # service_logs volume on the encrypted data device. No app changes — the
-  # services keep logging to stdout. (nginx persists its own access/error logs
-  # via nginx_logs, so it is excluded below to avoid duplication.)
+  # service_logs volume on the VM's OS disk (not the data device). No app changes
+  # — the services keep logging to stdout. (nginx persists its own access/error
+  # logs via nginx_logs, so it is excluded below to avoid duplication.)
   vector:
     image: timberio/vector:0.40.0-alpine
     restart: unless-stopped
@@ -147,7 +147,8 @@ services:
     expose:
       - "8080"
 
-# Bind named volumes to the encrypted data device mounted at /opt/openkoutsi/data.
+# Data volumes bind to the encrypted data device (DATA_MOUNT, /opt/openkoutsi/data);
+# log volumes bind to the OS disk (LOG_MOUNT) — see the nginx_logs/service_logs note.
 volumes:
   backend_data:
     driver: local
@@ -179,18 +180,20 @@ volumes:
       type: none
       o: bind
       device: ${DATA_MOUNT}/certbot_www
+  # Logs bind to the VM's OS disk (LOG_MOUNT), NOT the encrypted data device:
+  # they are transient, retention-pruned, and excluded from the backed-up volume.
   nginx_logs:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ${DATA_MOUNT}/nginx_logs
+      device: ${LOG_MOUNT}/nginx_logs
   service_logs:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ${DATA_MOUNT}/service_logs
+      device: ${LOG_MOUNT}/service_logs
   goaccess_report:
 
 secrets:

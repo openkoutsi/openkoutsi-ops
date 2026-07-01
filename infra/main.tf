@@ -120,6 +120,21 @@ resource "upcloud_server" "vm" {
     address_position = "1"
   }
 
+  # UpCloud v5 does not create interfaces implicitly, so they must be declared.
+  # Index 0 is the public IPv4 (its address is exported as public_ipv4 and is
+  # what the A records point at). The utility interface sits on UpCloud's
+  # internal SDN (no extra cost) for management traffic.
+  network_interface {
+    type              = "public"
+    ip_address_family = "IPv4"
+    index             = 0
+  }
+
+  network_interface {
+    type  = "utility"
+    index = 1
+  }
+
   login {
     user            = "deploy"
     keys            = var.ssh_public_keys

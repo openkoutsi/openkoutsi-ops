@@ -11,6 +11,7 @@ output "hostnames" {
     strava_bridge = local.strava_bridge_fqdn
     wahoo_bridge  = local.wahoo_bridge_fqdn
     stats         = local.stats_fqdn
+    logs          = local.logs_fqdn
   }
 }
 

@@ -79,6 +79,7 @@ write_files:
     permissions: "0644"
     content: |
       DATA_MOUNT=${data_mount}
+      LOG_MOUNT=${log_mount}
       FRONTEND_URL=https://${web_fqdn}
       API_URL=https://${api_fqdn}
       BRIDGE_URL=https://${strava_bridge_fqdn}
@@ -168,6 +169,7 @@ write_files:
       set -euo pipefail
 
       DATA_MOUNT="${data_mount}"
+      LOG_MOUNT="${log_mount}"
       DATA_DEV="/dev/vdb"   # second virtio device = the encrypted data storage
 
       # Install Docker engine + compose plugin from Docker's apt repo.
@@ -192,7 +194,11 @@ write_files:
       grep -q "$${DATA_MOUNT}" /etc/fstab || \
         echo "LABEL=okdata $${DATA_MOUNT} ext4 defaults,noatime 0 2" >> /etc/fstab
       mount -a
-      mkdir -p "$${DATA_MOUNT}"/{backend,strava_bridge,wahoo_bridge,letsencrypt,certbot_www,nginx_logs,service_logs}
+      mkdir -p "$${DATA_MOUNT}"/{backend,strava_bridge,wahoo_bridge,letsencrypt,certbot_www}
+
+      # Logs live on the OS disk (NOT the encrypted data device): transient,
+      # retention-pruned, and intentionally excluded from the data volume/backups.
+      mkdir -p "$${LOG_MOUNT}"/{nginx_logs,service_logs}
 
       chown -R deploy:deploy /opt/openkoutsi
 

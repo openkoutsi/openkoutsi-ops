@@ -178,15 +178,20 @@ Two complementary views, both behind the same basic-auth (`goaccess_htpasswd`):
   to stdout, which is ephemeral and wiped whenever the poll loop recreates a
   container. A **Vector** collector tails every container's output through the
   Docker API and writes it as per-service, daily-rotated files to the
-  `service_logs` volume on the encrypted data device
-  (`${DATA_MOUNT}/service_logs/<container>/<date>.log`). View them either:
+  `service_logs` volume on the VM's OS disk — **not** the encrypted data device
+  (`${LOG_MOUNT}/service_logs/<container>/<date>.log`). View them either:
   - **In the browser:** `https://logs.<domain>` — a **Dozzle** live log viewer
     (real-time tail/search across all containers).
-  - **On the box:** `tail -f`/`grep` the files under `${DATA_MOUNT}/service_logs/`.
+  - **On the box:** `tail -f`/`grep` the files under `${LOG_MOUNT}/service_logs/`.
 
   Retention is enforced by the `oklog-prune.timer` (daily), which deletes files
   older than `LOG_RETENTION_DAYS` (default 30, tunable via the `log_retention_days`
   variable). nginx logs are excluded from Vector since GoAccess already covers them.
+
+  Both the nginx logs (`${LOG_MOUNT}/nginx_logs`) and these service logs live on
+  the VM's OS disk (`LOG_MOUNT`, default `/opt/openkoutsi/logs`), kept off the
+  encrypted data device: they are transient and retention-pruned, so they don't
+  belong in the backed-up data volume.
 
 ### Backups and restore
 

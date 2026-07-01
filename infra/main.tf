@@ -9,8 +9,15 @@ locals {
 
   data_mount = "/opt/openkoutsi/data"
 
+  # Logs (nginx access/error + Vector's per-service files) stay on the VM's OS
+  # disk, deliberately NOT on the encrypted data device — they are transient,
+  # retention-pruned, and don't belong in the backed-up data volume. Only
+  # /opt/openkoutsi/data is the mounted device; /opt/openkoutsi/logs is the OS disk.
+  log_mount = "/opt/openkoutsi/logs"
+
   cloud_init = templatefile("${path.module}/cloud-init.yaml.tftpl", {
     data_mount      = local.data_mount
+    log_mount       = local.log_mount
     ssh_public_keys = var.ssh_public_keys
 
     # Hostnames

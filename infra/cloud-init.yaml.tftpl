@@ -219,6 +219,16 @@ write_files:
 
       chown -R deploy:deploy /opt/openkoutsi
 
+      # The backend and bridge containers run as a non-root user whose uid does
+      # not match the host's deploy owner, yet they must create their SQLite DBs
+      # (+ WAL/journal sidecars) and uploads inside these bind-mounted dirs.
+      # Without write access SQLite fails with "unable to open database file".
+      # Make the data dirs world-writable so any container uid can write; the VM
+      # is single-tenant, so this is an acceptable trade-off. (letsencrypt/
+      # certbot_www are written by the root certbot container, so they don't
+      # need this.)
+      chmod 0777 "$${DATA_MOUNT}"/{backend,strava_bridge,wahoo_bridge}
+
       # Optional: log in to GHCR for private packages (no-op when public).
       if [ -n "${ghcr_username}" ] && [ -n "${ghcr_token}" ]; then
         echo "${ghcr_token}" | docker login ghcr.io -u "${ghcr_username}" --password-stdin

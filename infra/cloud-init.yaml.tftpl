@@ -104,8 +104,13 @@ write_files:
       CERT_STAGING=${certbot_staging}
 
   # ── GoAccess dashboard basic-auth ──────────────────────────────────────
+  # Mode 0644: nginx worker processes run as the non-root "nginx" user, but this
+  # file is bind-mounted from the host where it's owned by deploy. At 0640 the
+  # worker (neither owner nor group) can't read it and basic-auth fails with
+  # "open() .../.htpasswd failed (13: Permission denied)". It holds only hashed
+  # passwords on a single-tenant VM, so world-readable is fine.
   - path: /opt/openkoutsi/nginx/.htpasswd
-    permissions: "0640"
+    permissions: "0644"
     content: |
       ${goaccess_htpasswd}
 
@@ -146,29 +151,36 @@ write_files:
     content: |
       ${indent(6, init_certs)}
 
-  # ── Secrets — one file per pydantic field, written 0400 ────────────────
+  # ── Secrets — one file per pydantic field ──────────────────────────────
   # File names MUST equal the lowercase settings field names so that
   # pydantic-settings' secrets_dir=/run/secrets reads them.
+  #
+  # Mode 0444 (world-readable): Compose bind-mounts each file into the app
+  # containers at /run/secrets/<name>, preserving the host owner/mode. The
+  # backend runs as a non-root user, so 0400 (owner-only, and bootstrap chowns
+  # these to deploy) gives it PermissionError reading its own secrets. The VM is
+  # single-tenant and user_data already carries these secrets in plaintext, so
+  # world-readable adds no meaningful exposure.
   - path: /opt/openkoutsi/secrets/secret_key
-    permissions: "0400"
+    permissions: "0444"
     content: ${secret_key}
   - path: /opt/openkoutsi/secrets/encryption_key
-    permissions: "0400"
+    permissions: "0444"
     content: ${encryption_key}
   - path: /opt/openkoutsi/secrets/strava_client_secret
-    permissions: "0400"
+    permissions: "0444"
     content: ${strava_client_secret}
   - path: /opt/openkoutsi/secrets/bridge_secret
-    permissions: "0400"
+    permissions: "0444"
     content: ${bridge_secret}
   - path: /opt/openkoutsi/secrets/wahoo_client_secret
-    permissions: "0400"
+    permissions: "0444"
     content: ${wahoo_client_secret}
   - path: /opt/openkoutsi/secrets/wahoo_bridge_secret
-    permissions: "0400"
+    permissions: "0444"
     content: ${wahoo_bridge_secret}
   - path: /opt/openkoutsi/secrets/wahoo_webhook_token
-    permissions: "0400"
+    permissions: "0444"
     content: ${wahoo_webhook_token}
 
   # ── First-boot provisioning script ─────────────────────────────────────
@@ -211,6 +223,16 @@ write_files:
       mkdir -p "$${LOG_MOUNT}"/{nginx_logs,service_logs}
 
       chown -R deploy:deploy /opt/openkoutsi
+
+      # The backend and bridge containers run as a non-root user whose uid does
+      # not match the host's deploy owner, yet they must create their SQLite DBs
+      # (+ WAL/journal sidecars) and uploads inside these bind-mounted dirs.
+      # Without write access SQLite fails with "unable to open database file".
+      # Make the data dirs world-writable so any container uid can write; the VM
+      # is single-tenant, so this is an acceptable trade-off. (letsencrypt/
+      # certbot_www are written by the root certbot container, so they don't
+      # need this.)
+      chmod 0777 "$${DATA_MOUNT}"/{backend,strava_bridge,wahoo_bridge}
 
       # Optional: log in to GHCR for private packages (no-op when public).
       if [ -n "${ghcr_username}" ] && [ -n "${ghcr_token}" ]; then

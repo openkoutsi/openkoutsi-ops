@@ -12,6 +12,12 @@
 # Idempotent: if a real (non-bootstrap) cert is already present it does nothing,
 # so it is safe to run on every boot and to re-run by hand. Run with FORCE_CERT=1
 # to re-request even when a cert exists.
+#
+# Run as root (sudo). cloud-init runs this as root at first boot, and the certbot
+# container writes the cert files under /opt/openkoutsi/data/letsencrypt as root.
+# When re-running by hand as the deploy user, openssl can't overwrite those
+# root-owned files and the script aborts — so invoke it with sudo:
+#   sudo FORCE_CERT=1 bash scripts/init-certs.sh
 
 set -euo pipefail
 
@@ -31,10 +37,13 @@ LIVE_HOST="${DATA_MOUNT}/letsencrypt/live/${CERT_NAME}"
 # check and crash-loops — taking port 80 (and the ACME challenge) down with it.
 write_bootstrap_cert() {
   mkdir -p "${LIVE_HOST}"
+  # Only stdout is silenced; openssl's errors stay on stderr so a real failure
+  # (e.g. permission denied overwriting root-owned cert files when not run as
+  # root) is visible instead of the script dying silently under `set -e`.
   openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
     -keyout "${LIVE_HOST}/privkey.pem" \
     -out "${LIVE_HOST}/fullchain.pem" \
-    -subj "/CN=${CERT_NAME}/O=openkoutsi-bootstrap" >/dev/null 2>&1
+    -subj "/CN=${CERT_NAME}/O=openkoutsi-bootstrap" >/dev/null
 }
 
 # Already have a real cert? (bootstrap certs carry O=openkoutsi-bootstrap.)

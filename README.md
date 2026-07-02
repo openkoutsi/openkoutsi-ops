@@ -141,13 +141,18 @@ propagated, issue the real cert:
 
 ```bash
 ssh deploy@<ip>
-cd /opt/openkoutsi && bash scripts/init-certs.sh
+cd /opt/openkoutsi && sudo bash scripts/init-certs.sh
 ```
+
+> **Run it with `sudo`.** cloud-init runs this as root at first boot, and the
+> certbot container writes the cert files as root. Re-running it as the `deploy`
+> user fails silently — `openssl` can't overwrite the root-owned cert files, so
+> the script aborts right after the "writing temporary self-signed cert" line.
 
 Tips:
 - Set `certbot_staging = true` while testing to use Let's Encrypt's staging CA
   (untrusted certs, no rate limits); flip to `false` and re-run for real certs.
-- Force a re-issue at any time with `FORCE_CERT=1 bash scripts/init-certs.sh`.
+- Force a re-issue at any time with `sudo FORCE_CERT=1 bash scripts/init-certs.sh`.
 - Renewals are automatic: the `certbot` service renews every 12h and nginx
   reloads every 6h to pick up the new cert.
 

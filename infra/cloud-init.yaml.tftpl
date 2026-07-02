@@ -104,8 +104,13 @@ write_files:
       CERT_STAGING=${certbot_staging}
 
   # ── GoAccess dashboard basic-auth ──────────────────────────────────────
+  # Mode 0644: nginx worker processes run as the non-root "nginx" user, but this
+  # file is bind-mounted from the host where it's owned by deploy. At 0640 the
+  # worker (neither owner nor group) can't read it and basic-auth fails with
+  # "open() .../.htpasswd failed (13: Permission denied)". It holds only hashed
+  # passwords on a single-tenant VM, so world-readable is fine.
   - path: /opt/openkoutsi/nginx/.htpasswd
-    permissions: "0640"
+    permissions: "0644"
     content: |
       ${goaccess_htpasswd}
 

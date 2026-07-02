@@ -6,6 +6,7 @@ locals {
   wahoo_bridge_fqdn  = "${var.wahoo_bridge_host}.${var.domain}"
   stats_fqdn         = "${var.stats_host}.${var.domain}"
   logs_fqdn          = "${var.logs_host}.${var.domain}"
+  metrics_fqdn       = "${var.metrics_host}.${var.domain}"
 
   data_mount = "/opt/openkoutsi/data"
 
@@ -27,6 +28,7 @@ locals {
     wahoo_bridge_fqdn  = local.wahoo_bridge_fqdn
     stats_fqdn         = local.stats_fqdn
     logs_fqdn          = local.logs_fqdn
+    metrics_fqdn       = local.metrics_fqdn
     certbot_email      = var.certbot_email
     certbot_staging    = var.certbot_staging ? "1" : "0"
 
@@ -64,8 +66,10 @@ locals {
     nginx_wahoo_bridge  = templatefile("${path.module}/../compose/nginx/conf.d/wahoo-bridge.conf", { server_name = local.wahoo_bridge_fqdn })
     nginx_goaccess      = templatefile("${path.module}/../compose/nginx/conf.d/goaccess.conf", { server_name = local.stats_fqdn })
     nginx_logs          = templatefile("${path.module}/../compose/nginx/conf.d/logs.conf", { server_name = local.logs_fqdn })
+    nginx_metrics       = templatefile("${path.module}/../compose/nginx/conf.d/metrics.conf", { server_name = local.metrics_fqdn })
     goaccess_conf       = templatefile("${path.module}/../compose/goaccess/goaccess.conf", { stats_fqdn = local.stats_fqdn })
     vector_conf         = file("${path.module}/../compose/vector/vector.yaml")
+    netdata_conf        = file("${path.module}/../compose/netdata/netdata.conf")
     okdeploy_service    = file("${path.module}/../systemd/okdeploy.service")
     okdeploy_timer      = file("${path.module}/../systemd/okdeploy.timer")
     okdeploy_pull       = file("${path.module}/../scripts/okdeploy-pull.sh")

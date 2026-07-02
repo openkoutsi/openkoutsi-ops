@@ -12,6 +12,7 @@ output "hostnames" {
     wahoo_bridge  = local.wahoo_bridge_fqdn
     stats         = local.stats_fqdn
     logs          = local.logs_fqdn
+    metrics       = local.metrics_fqdn
   }
 }
 

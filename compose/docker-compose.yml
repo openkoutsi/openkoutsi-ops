@@ -42,7 +42,10 @@ services:
     image: ghcr.io/openkoutsi/openkoutsi-web:latest
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: ${API_URL}
+      # The web image reads API_URL at runtime (not the build-time-baked
+      # NEXT_PUBLIC_API_URL), so the client calls the public API instead of
+      # falling back to its localhost:8000 default.
+      API_URL: ${API_URL}
     expose:
       - "3000"
 

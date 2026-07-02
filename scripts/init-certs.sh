@@ -26,6 +26,17 @@ set +a
 CERT_NAME="${CERT_NAME:-openkoutsi}"
 LIVE_HOST="${DATA_MOUNT}/letsencrypt/live/${CERT_NAME}"
 
+# Lay down a throwaway self-signed cert so nginx can (re)start. Every nginx 443
+# server block references this path, so with no cert here nginx fails its config
+# check and crash-loops — taking port 80 (and the ACME challenge) down with it.
+write_bootstrap_cert() {
+  mkdir -p "${LIVE_HOST}"
+  openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+    -keyout "${LIVE_HOST}/privkey.pem" \
+    -out "${LIVE_HOST}/fullchain.pem" \
+    -subj "/CN=${CERT_NAME}/O=openkoutsi-bootstrap" >/dev/null 2>&1
+}
+
 # Already have a real cert? (bootstrap certs carry O=openkoutsi-bootstrap.)
 if [ -f "${LIVE_HOST}/fullchain.pem" ] && [ "${FORCE_CERT:-0}" != "1" ]; then
   if ! openssl x509 -in "${LIVE_HOST}/fullchain.pem" -noout -subject 2>/dev/null \
@@ -37,15 +48,13 @@ fi
 
 # 1. Throwaway self-signed cert so nginx has something to load.
 echo "init-certs: writing temporary self-signed cert so nginx can start..."
-mkdir -p "${LIVE_HOST}"
-openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-  -keyout "${LIVE_HOST}/privkey.pem" \
-  -out "${LIVE_HOST}/fullchain.pem" \
-  -subj "/CN=${CERT_NAME}/O=openkoutsi-bootstrap" >/dev/null 2>&1
+write_bootstrap_cert
 
 # 2. Bring nginx (and its deps) up so it can serve the ACME challenge on :80.
+#    Force-recreate so a previously crash-looped nginx starts fresh (resetting
+#    Docker's restart backoff) now that a cert is present on disk.
 echo "init-certs: starting nginx..."
-docker compose up -d nginx
+docker compose up -d --force-recreate nginx
 sleep 3
 
 # 3. Request the real certificate (one SAN cert covering every hostname).
@@ -66,11 +75,22 @@ rm -rf "${DATA_MOUNT}/letsencrypt/live/${CERT_NAME}" \
        "${DATA_MOUNT}/letsencrypt/renewal/${CERT_NAME}.conf"
 
 echo "init-certs: requesting certificate for: ${domain_args[*]}"
-docker compose run --rm --entrypoint certbot certbot \
-  certonly --webroot -w /var/www/certbot \
-  --cert-name "${CERT_NAME}" "${domain_args[@]}" \
-  --email "${CERT_EMAIL}" --agree-tos --no-eff-email \
-  --non-interactive ${staging_arg}
+if ! docker compose run --rm --entrypoint certbot certbot \
+    certonly --webroot -w /var/www/certbot \
+    --cert-name "${CERT_NAME}" "${domain_args[@]}" \
+    --email "${CERT_EMAIL}" --agree-tos --no-eff-email \
+    --non-interactive ${staging_arg}; then
+  # certbot failed (DNS not pointing here yet, port 80 unreachable, rate limit,
+  # ...). We removed the previous lineage above, so there is no cert on disk now.
+  # Restore a self-signed one and bring nginx back up, otherwise nginx crash-loops
+  # with no cert — which takes port 80 down and means the ACME challenge can never
+  # be satisfied on a later attempt (a self-inflicted deadlock).
+  echo "init-certs: certbot failed — restoring self-signed cert so nginx stays up."
+  echo "init-certs: fix DNS / port 80 reachability, then re-run with FORCE_CERT=1."
+  write_bootstrap_cert
+  docker compose up -d --force-recreate nginx
+  exit 1
+fi
 
 # 4. Reload nginx onto the real cert.
 echo "init-certs: reloading nginx onto the real certificate."

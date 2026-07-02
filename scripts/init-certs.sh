@@ -37,10 +37,13 @@ LIVE_HOST="${DATA_MOUNT}/letsencrypt/live/${CERT_NAME}"
 # check and crash-loops — taking port 80 (and the ACME challenge) down with it.
 write_bootstrap_cert() {
   mkdir -p "${LIVE_HOST}"
+  # Only stdout is silenced; openssl's errors stay on stderr so a real failure
+  # (e.g. permission denied overwriting root-owned cert files when not run as
+  # root) is visible instead of the script dying silently under `set -e`.
   openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
     -keyout "${LIVE_HOST}/privkey.pem" \
     -out "${LIVE_HOST}/fullchain.pem" \
-    -subj "/CN=${CERT_NAME}/O=openkoutsi-bootstrap" >/dev/null 2>&1
+    -subj "/CN=${CERT_NAME}/O=openkoutsi-bootstrap" >/dev/null
 }
 
 # Already have a real cert? (bootstrap certs carry O=openkoutsi-bootstrap.)

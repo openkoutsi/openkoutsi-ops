@@ -115,6 +115,11 @@ resource "upcloud_server" "vm" {
   zone     = var.zone
   plan     = var.server_plan
 
+  # The UpCloud metadata service must be enabled to boot from a cloud-init
+  # template — that's how cloud-init reads user_data. Without it UpCloud rejects
+  # the clone with METADATA_DISABLED_ON_CLOUD-INIT (409).
+  metadata = true
+
   # OS boot disk (encrypted as well for defense in depth).
   template {
     storage = var.os_template

@@ -219,6 +219,16 @@ write_files:
 
       # Bring the stack up and enable the poll timer.
       cd /opt/openkoutsi
+
+      # Non-secret config for compose variable interpolation (DATA_MOUNT,
+      # LOG_MOUNT, *_URL, ...). Without this the bind-mount volume devices
+      # expand to empty (e.g. /backend) and containers are created but fail
+      # to start. okdeploy-pull.sh sources this the same way.
+      set -a
+      # shellcheck disable=SC1091
+      . /opt/openkoutsi/stack.env
+      set +a
+
       docker compose pull -q || true
 
       # First-boot TLS: obtain the real cert before the full stack comes up, so

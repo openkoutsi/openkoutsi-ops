@@ -70,7 +70,7 @@ services:
     volumes:
       - wahoo_bridge_data:/data
     secrets:
-      - bridge_secret
+      - wahoo_bridge_secret
       - wahoo_webhook_token
     expose:
       - "8085"

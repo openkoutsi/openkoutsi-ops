@@ -12,6 +12,12 @@
 # Idempotent: if a real (non-bootstrap) cert is already present it does nothing,
 # so it is safe to run on every boot and to re-run by hand. Run with FORCE_CERT=1
 # to re-request even when a cert exists.
+#
+# Run as root (sudo). cloud-init runs this as root at first boot, and the certbot
+# container writes the cert files under /opt/openkoutsi/data/letsencrypt as root.
+# When re-running by hand as the deploy user, openssl can't overwrite those
+# root-owned files and the script aborts — so invoke it with sudo:
+#   sudo FORCE_CERT=1 bash scripts/init-certs.sh
 
 set -euo pipefail
 

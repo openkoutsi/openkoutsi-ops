@@ -146,29 +146,36 @@ write_files:
     content: |
       ${indent(6, init_certs)}
 
-  # ── Secrets — one file per pydantic field, written 0400 ────────────────
+  # ── Secrets — one file per pydantic field ──────────────────────────────
   # File names MUST equal the lowercase settings field names so that
   # pydantic-settings' secrets_dir=/run/secrets reads them.
+  #
+  # Mode 0444 (world-readable): Compose bind-mounts each file into the app
+  # containers at /run/secrets/<name>, preserving the host owner/mode. The
+  # backend runs as a non-root user, so 0400 (owner-only, and bootstrap chowns
+  # these to deploy) gives it PermissionError reading its own secrets. The VM is
+  # single-tenant and user_data already carries these secrets in plaintext, so
+  # world-readable adds no meaningful exposure.
   - path: /opt/openkoutsi/secrets/secret_key
-    permissions: "0400"
+    permissions: "0444"
     content: ${secret_key}
   - path: /opt/openkoutsi/secrets/encryption_key
-    permissions: "0400"
+    permissions: "0444"
     content: ${encryption_key}
   - path: /opt/openkoutsi/secrets/strava_client_secret
-    permissions: "0400"
+    permissions: "0444"
     content: ${strava_client_secret}
   - path: /opt/openkoutsi/secrets/bridge_secret
-    permissions: "0400"
+    permissions: "0444"
     content: ${bridge_secret}
   - path: /opt/openkoutsi/secrets/wahoo_client_secret
-    permissions: "0400"
+    permissions: "0444"
     content: ${wahoo_client_secret}
   - path: /opt/openkoutsi/secrets/wahoo_bridge_secret
-    permissions: "0400"
+    permissions: "0444"
     content: ${wahoo_bridge_secret}
   - path: /opt/openkoutsi/secrets/wahoo_webhook_token
-    permissions: "0400"
+    permissions: "0444"
     content: ${wahoo_webhook_token}
 
   # ── First-boot provisioning script ─────────────────────────────────────

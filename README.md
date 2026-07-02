@@ -56,8 +56,9 @@ to private packages, set `ghcr_username`/`ghcr_token` and cloud-init will
 Alongside the app images the stack runs a few pinned third-party containers:
 `nginx` (TLS/reverse proxy), `certbot` (TLS renewal), `allinurl/goaccess`
 (nginx-log dashboard), `timberio/vector` (collects every container's stdout into
-per-service log files), and `amir20/dozzle` (live log viewer). See
-[Observability](#observability) for the logging pieces.
+per-service log files), `amir20/dozzle` (live log viewer), and `netdata/netdata`
+(host + container performance metrics). See [Observability](#observability) for
+the logging and metrics pieces.
 
 ## Provisioning
 
@@ -121,12 +122,13 @@ registrar**, all pointing at the `public_ipv4` output:
 | `wahoo-bridge`   | Wahoo bridge     |
 | `stats`          | GoAccess report  |
 | `logs`           | Dozzle log viewer |
+| `metrics`        | Netdata metrics dashboard |
 
 ### 5. TLS certificates (first-boot bootstrap)
 
 nginx terminates TLS with a **single Let's Encrypt SAN cert** (lineage
-`openkoutsi`) covering all six hostnames (apex, `api`, `bridge`, `wahoo-bridge`,
-`stats`, `logs`). Because a fresh VM has no cert yet,
+`openkoutsi`) covering all seven hostnames (apex, `api`, `bridge`, `wahoo-bridge`,
+`stats`, `logs`, `metrics`). Because a fresh VM has no cert yet,
 `scripts/init-certs.sh` breaks the usual nginx⇄certbot deadlock: it writes a
 throwaway self-signed cert so nginx can start, brings nginx up, obtains the real
 cert over the HTTP-01 webroot challenge, then reloads nginx onto it.
@@ -167,13 +169,26 @@ Tips:
   credentials come from the `goaccess_htpasswd` variable (generate with
   `htpasswd -nB admin`), which cloud-init writes to `/opt/openkoutsi/nginx/.htpasswd`.
 - **Service logs (web/backend/bridges):** see [Observability](#observability).
+- **Performance metrics (CPU/memory/disk/network):** `https://metrics.<domain>`
+  (Netdata) — see [Observability](#observability).
 
 ### Observability
 
-Two complementary views, both behind the same basic-auth (`goaccess_htpasswd`):
+Three complementary views, all behind the same basic-auth (`goaccess_htpasswd`):
 
 - **nginx traffic** — GoAccess renders the nginx access log as a real-time HTML
   report at `https://stats.<domain>` (see above).
+- **Server & container performance** — a **Netdata** container exposes a live
+  dashboard at `https://metrics.<domain>`: CPU utilisation, memory/swap, disk I/O
+  and space, network, and per-container resource usage. Use it to judge whether the
+  VM plan is over- or under-sized before resizing (see [Scaling](#scaling)). It
+  reads host metrics through read-only `/proc`, `/sys` and the Docker socket, and
+  keeps a small on-disk history in Docker named volumes (`netdata_lib` /
+  `netdata_cache`) on the OS disk — deliberately off the encrypted data device, like
+  the logs, since it is transient and self-pruned. To stay light on the 2 GB VM its
+  config (`compose/netdata/netdata.conf`) disables Netdata Cloud and the ML
+  anomaly-detection engine, samples every 2s, and caps the metrics DB at 256 MB;
+  raise `dbengine multihost disk space MB` there for longer retention.
 - **Service logs** — the application containers (backend, web, both bridges) log
   to stdout, which is ephemeral and wiped whenever the poll loop recreates a
   container. A **Vector** collector tails every container's output through the

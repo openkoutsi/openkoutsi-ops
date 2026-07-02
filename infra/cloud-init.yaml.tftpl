@@ -64,6 +64,11 @@ write_files:
     content: |
       ${indent(6, nginx_logs)}
 
+  - path: /opt/openkoutsi/nginx/conf.d/metrics.conf
+    permissions: "0644"
+    content: |
+      ${indent(6, nginx_metrics)}
+
   - path: /opt/openkoutsi/goaccess/goaccess.conf
     permissions: "0644"
     content: |
@@ -73,6 +78,11 @@ write_files:
     permissions: "0644"
     content: |
       ${indent(6, vector_conf)}
+
+  - path: /opt/openkoutsi/netdata/netdata.conf
+    permissions: "0644"
+    content: |
+      ${indent(6, netdata_conf)}
 
   # ── Non-secret environment (plain env, NOT secrets) ────────────────────
   - path: /opt/openkoutsi/stack.env
@@ -89,7 +99,7 @@ write_files:
       LLM_ALLOWED_SERVERS=${llm_allowed_servers}
       LOG_RETENTION_DAYS=${log_retention_days}
       CERT_NAME=openkoutsi
-      CERT_DOMAINS=${web_fqdn} ${api_fqdn} ${strava_bridge_fqdn} ${wahoo_bridge_fqdn} ${stats_fqdn} ${logs_fqdn}
+      CERT_DOMAINS=${web_fqdn} ${api_fqdn} ${strava_bridge_fqdn} ${wahoo_bridge_fqdn} ${stats_fqdn} ${logs_fqdn} ${metrics_fqdn}
       CERT_EMAIL=${certbot_email}
       CERT_STAGING=${certbot_staging}
 

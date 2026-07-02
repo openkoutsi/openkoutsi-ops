@@ -81,6 +81,7 @@ services:
       - strava_bridge
       - wahoo_bridge
       - dozzle
+      - netdata
     ports:
       - "80:80"
       - "443:443"
@@ -147,6 +148,34 @@ services:
     expose:
       - "8080"
 
+  # Lightweight host + container performance monitoring (CPU, memory, disk I/O,
+  # network, per-container stats), proxied by nginx at metrics.<domain> behind the
+  # same basic-auth as the other dashboards. Reads host metrics through read-only
+  # /proc, /sys and the Docker socket; machine-learning and Netdata Cloud are
+  # disabled in netdata.conf to keep the footprint small on the single VM. Its
+  # metrics DB lives in Docker named volumes (OS disk), NOT the encrypted data
+  # device — this is transient, self-retention-managed monitoring data.
+  netdata:
+    image: netdata/netdata:stable
+    restart: unless-stopped
+    hostname: openkoutsi
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    environment:
+      DO_NOT_TRACK: "1"
+    volumes:
+      - netdata_lib:/var/lib/netdata
+      - netdata_cache:/var/cache/netdata
+      - ./netdata/netdata.conf:/etc/netdata/netdata.conf:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    expose:
+      - "19999"
+
 # Data volumes bind to the encrypted data device (DATA_MOUNT, /opt/openkoutsi/data);
 # log volumes bind to the OS disk (LOG_MOUNT) — see the nginx_logs/service_logs note.
 volumes:
@@ -195,6 +224,11 @@ volumes:
       o: bind
       device: ${LOG_MOUNT}/service_logs
   goaccess_report:
+  # Netdata's metrics DB + cache: plain Docker named volumes on the OS disk (like
+  # goaccess_report), kept off the encrypted, backed-up data device — transient,
+  # self-pruned monitoring data.
+  netdata_lib:
+  netdata_cache:
 
 secrets:
   secret_key:

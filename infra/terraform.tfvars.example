@@ -20,8 +20,9 @@ ssh_public_keys = ["ssh-ed25519 AAAA... you@host"]
 domain        = "openkoutsi.example"
 certbot_email = "admin@openkoutsi.example"
 # certbot_staging = true   # use LE staging while testing first-boot, then set false
-# api_host / strava_bridge_host / wahoo_bridge_host / stats_host default to
-# api / bridge / wahoo-bridge / stats — override only if needed.
+# api_host / strava_bridge_host / wahoo_bridge_host / stats_host / logs_host /
+# metrics_host default to api / bridge / wahoo-bridge / stats / logs / metrics —
+# override only if needed.
 
 # ── Non-secret app config ────────────────────────────────────────────────────
 strava_client_id    = "12345"

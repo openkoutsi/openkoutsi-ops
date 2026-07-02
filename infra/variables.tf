@@ -135,6 +135,12 @@ variable "logs_host" {
   default     = "logs"
 }
 
+variable "metrics_host" {
+  description = "Hostname for the Netdata performance-metrics dashboard."
+  type        = string
+  default     = "metrics"
+}
+
 variable "certbot_email" {
   description = "Contact email Let's Encrypt uses for expiry notices."
   type        = string

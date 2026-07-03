@@ -67,7 +67,7 @@ locals {
     nginx_goaccess      = templatefile("${path.module}/../compose/nginx/conf.d/goaccess.conf", { server_name = local.stats_fqdn })
     nginx_logs          = templatefile("${path.module}/../compose/nginx/conf.d/logs.conf", { server_name = local.logs_fqdn })
     nginx_metrics       = templatefile("${path.module}/../compose/nginx/conf.d/metrics.conf", { server_name = local.metrics_fqdn })
-    goaccess_conf       = templatefile("${path.module}/../compose/goaccess/goaccess.conf", { stats_fqdn = local.stats_fqdn })
+    goaccess_conf       = file("${path.module}/../compose/goaccess/goaccess.conf")
     vector_conf         = file("${path.module}/../compose/vector/vector.yaml")
     netdata_conf        = file("${path.module}/../compose/netdata/netdata.conf")
     okdeploy_service    = file("${path.module}/../systemd/okdeploy.service")

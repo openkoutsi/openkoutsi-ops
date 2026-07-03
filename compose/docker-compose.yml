@@ -130,7 +130,11 @@ services:
       - nginx_logs:/var/log/nginx:ro
       - goaccess_report:/report
       - ./goaccess/goaccess.conf:/etc/goaccess/goaccess.conf:ro
-    # Wait until nginx has created a REAL access.log before launching goaccess:
+    # goaccess runs in STATIC mode (no WebSocket — see goaccess.conf), so it
+    # processes the log, writes /report/index.html, and exits. Regenerate it on a
+    # 30s loop so the report stays current.
+    #
+    # First wait until nginx has created a REAL access.log:
     #   - missing file  -> goaccess exits fatally ("Unable to open the specified
     #                       log file"), writing no /report/index.html;
     #   - symlink       -> until nginx strips the stock image's access.log ->
@@ -150,7 +154,10 @@ services:
           echo "waiting for nginx to create a real /var/log/nginx/access.log..."
           sleep 1
         done
-        exec goaccess --no-global-config --config-file=/etc/goaccess/goaccess.conf
+        while :; do
+          goaccess --no-global-config --config-file=/etc/goaccess/goaccess.conf
+          sleep 30
+        done
 
   # Centralized log collection: tails every container's stdout/stderr via the
   # Docker Engine API and writes per-service, daily-rotated files to the

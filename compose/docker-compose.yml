@@ -88,9 +88,18 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    # The stock nginx image ships /var/log/nginx/{access,error}.log as symlinks
+    # to /dev/stdout and /dev/stderr, and Docker copies those symlinks into the
+    # (empty) nginx_logs volume on first use. nginx then follows them and logs to
+    # its stdout/stderr instead of writing real files — so goaccess, which reads
+    # this volume, sees access.log as a symlink to /dev/stdout (its own stdout)
+    # and can never parse a report, and vector's nginx exclusion loses the logs
+    # too. Strip the symlinks (only if they are symlinks, to preserve real logs
+    # across restarts) so nginx creates real files in nginx_logs, as intended.
     # Reload every 6h so renewed certs from the certbot service are picked up.
     command: >
-      sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & exec nginx -g 'daemon off;'"
+      sh -c "for f in access.log error.log; do [ -L /var/log/nginx/$$f ] && rm -f /var/log/nginx/$$f; done;
+      while :; do sleep 6h & wait $${!}; nginx -s reload; done & exec nginx -g 'daemon off;'"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
@@ -121,19 +130,24 @@ services:
       - nginx_logs:/var/log/nginx:ro
       - goaccess_report:/report
       - ./goaccess/goaccess.conf:/etc/goaccess/goaccess.conf:ro
-    # goaccess exits fatally ("Unable to open the specified log file") if
-    # access.log does not exist yet, writing no /report/index.html. depends_on
-    # only waits for the nginx CONTAINER to start, not for nginx to create its
-    # access log, so goaccess can win that race, crash-loop, and leave the stats
-    # dir empty — nginx then returns 403 (directory index forbidden). Wait for
-    # the log file to exist before launching. An empty log is fine; a missing
-    # one is not.
+    # Wait until nginx has created a REAL access.log before launching goaccess:
+    #   - missing file  -> goaccess exits fatally ("Unable to open the specified
+    #                       log file"), writing no /report/index.html;
+    #   - symlink       -> until nginx strips the stock image's access.log ->
+    #                       /dev/stdout symlink (see the nginx service), goaccess
+    #                       would follow it to its own stdout and hang, again
+    #                       producing no report.
+    # depends_on only waits for the nginx CONTAINER to start, not for it to have
+    # produced that file, so guard here. Either failure leaves the stats dir
+    # empty and nginx returns 403 (directory index forbidden). An empty regular
+    # log is fine. [ ! -L ] rejects the symlink (its /dev/stdout target may still
+    # satisfy -e/-f inside the container).
     entrypoint:
       - /bin/sh
       - -c
       - |
-        until [ -e /var/log/nginx/access.log ]; do
-          echo "waiting for /var/log/nginx/access.log to be created by nginx..."
+        while [ ! -e /var/log/nginx/access.log ] || [ -L /var/log/nginx/access.log ]; do
+          echo "waiting for nginx to create a real /var/log/nginx/access.log..."
           sleep 1
         done
         exec goaccess --no-global-config --config-file=/etc/goaccess/goaccess.conf

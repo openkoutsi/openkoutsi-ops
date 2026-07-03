@@ -121,9 +121,22 @@ services:
       - nginx_logs:/var/log/nginx:ro
       - goaccess_report:/report
       - ./goaccess/goaccess.conf:/etc/goaccess/goaccess.conf:ro
-    command:
-      - --no-global-config
-      - --config-file=/etc/goaccess/goaccess.conf
+    # goaccess exits fatally ("Unable to open the specified log file") if
+    # access.log does not exist yet, writing no /report/index.html. depends_on
+    # only waits for the nginx CONTAINER to start, not for nginx to create its
+    # access log, so goaccess can win that race, crash-loop, and leave the stats
+    # dir empty — nginx then returns 403 (directory index forbidden). Wait for
+    # the log file to exist before launching. An empty log is fine; a missing
+    # one is not.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until [ -e /var/log/nginx/access.log ]; do
+          echo "waiting for /var/log/nginx/access.log to be created by nginx..."
+          sleep 1
+        done
+        exec goaccess --no-global-config --config-file=/etc/goaccess/goaccess.conf
 
   # Centralized log collection: tails every container's stdout/stderr via the
   # Docker Engine API and writes per-service, daily-rotated files to the

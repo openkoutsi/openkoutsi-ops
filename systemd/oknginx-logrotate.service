@@ -1,0 +1,9 @@
+[Unit]
+Description=openkoutsi nginx access-log size cap (rotate + reopen when over cap)
+Wants=local-fs.target
+After=local-fs.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/openkoutsi
+ExecStart=/opt/openkoutsi/scripts/oknginx-logrotate.sh

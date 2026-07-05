@@ -206,7 +206,10 @@ Three complementary views, all behind the same basic-auth (`goaccess_htpasswd`):
 
   Retention is enforced by the `oklog-prune.timer` (daily), which deletes files
   older than `LOG_RETENTION_DAYS` (default 30, tunable via the `log_retention_days`
-  variable). nginx logs are excluded from Vector since GoAccess already covers them.
+  variable). nginx's **access** log is not collected by Vector — it is a real file
+  that GoAccess already renders — but its **error** log is: nginx keeps `error.log`
+  as a symlink to stderr, so Vector and Dozzle capture nginx errors alongside every
+  other service.
 
   Both the nginx logs (`${LOG_MOUNT}/nginx_logs`) and these service logs live on
   the VM's OS disk (`LOG_MOUNT`, default `/opt/openkoutsi/logs`), kept off the

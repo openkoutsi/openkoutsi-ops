@@ -15,16 +15,19 @@ sources:
     type: docker_logs
 
 transforms:
-  # Keep only the application containers. Skip the logging/edge stack itself:
-  # vector (avoids ingesting its own output), dozzle, goaccess, certbot, and
-  # nginx — nginx already persists its access/error logs via the nginx_logs
-  # volume + GoAccess dashboard. Matching is on the compose container name
-  # (e.g. "openkoutsi-vector-1"), so we match the service segment between the
-  # project prefix and the replica index, tolerating both "-" and "_" naming.
+  # Keep the application containers plus nginx; skip only the rest of the
+  # logging/edge stack: vector (avoids ingesting its own output), dozzle,
+  # goaccess and certbot. nginx's access.log is a real file persisted via the
+  # nginx_logs volume + GoAccess dashboard and never reaches stdout, but its
+  # error.log is a symlink to stderr (issue #23), so collecting nginx's output
+  # captures those errors without duplicating the access log. Matching is on the
+  # compose container name (e.g. "openkoutsi-vector-1"), so we match the service
+  # segment between the project prefix and the replica index, tolerating both
+  # "-" and "_" naming.
   app_only:
     type: filter
     inputs: [docker]
-    condition: '!match(string!(.container_name), r''[-_](vector|dozzle|goaccess|certbot|nginx)[-_]'')'
+    condition: '!match(string!(.container_name), r''[-_](vector|dozzle|goaccess|certbot)[-_]'')'
 
 sinks:
   files:

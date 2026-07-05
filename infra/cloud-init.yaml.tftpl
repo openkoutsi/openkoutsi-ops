@@ -98,6 +98,8 @@ write_files:
       WAHOO_CLIENT_ID=${wahoo_client_id}
       LLM_ALLOWED_SERVERS=${llm_allowed_servers}
       LOG_RETENTION_DAYS=${log_retention_days}
+      NGINX_ACCESS_LOG_MAX_MB=${nginx_access_log_max_mb}
+      NGINX_ACCESS_LOG_KEEP=${nginx_access_log_keep}
       CERT_NAME=openkoutsi
       CERT_DOMAINS="${web_fqdn} ${api_fqdn} ${strava_bridge_fqdn} ${wahoo_bridge_fqdn} ${stats_fqdn} ${logs_fqdn} ${metrics_fqdn}"
       CERT_EMAIL=${certbot_email}
@@ -145,6 +147,22 @@ write_files:
     permissions: "0755"
     content: |
       ${indent(6, oklog_prune)}
+
+  # ── nginx access-log size-cap unit + timer + script ────────────────────
+  - path: /etc/systemd/system/oknginx-logrotate.service
+    permissions: "0644"
+    content: |
+      ${indent(6, oknginx_logrotate_service)}
+
+  - path: /etc/systemd/system/oknginx-logrotate.timer
+    permissions: "0644"
+    content: |
+      ${indent(6, oknginx_logrotate_timer)}
+
+  - path: /opt/openkoutsi/scripts/oknginx-logrotate.sh
+    permissions: "0755"
+    content: |
+      ${indent(6, oknginx_logrotate)}
 
   - path: /opt/openkoutsi/scripts/init-certs.sh
     permissions: "0755"
@@ -264,6 +282,7 @@ write_files:
       systemctl daemon-reload
       systemctl enable --now okdeploy.timer
       systemctl enable --now oklog-prune.timer
+      systemctl enable --now oknginx-logrotate.timer
 
 runcmd:
   - [bash, /opt/openkoutsi/scripts/bootstrap.sh]

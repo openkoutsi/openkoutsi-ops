@@ -1,0 +1,10 @@
+[Unit]
+Description=Run oknginx-logrotate.service hourly to cap the nginx access-log size
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+Unit=oknginx-logrotate.service
+
+[Install]
+WantedBy=timers.target

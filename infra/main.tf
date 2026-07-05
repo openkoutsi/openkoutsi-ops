@@ -35,6 +35,10 @@ locals {
     # Service-log retention (days) enforced by the oklog-prune timer.
     log_retention_days = var.log_retention_days
 
+    # nginx access-log size cap enforced by the oknginx-logrotate timer.
+    nginx_access_log_max_mb = var.nginx_access_log_max_mb
+    nginx_access_log_keep   = var.nginx_access_log_keep
+
     # Non-secret app config. LLM base URL / model are admin-managed (InstanceSettings),
     # so they are not seeded here; LLM_ALLOWED_SERVERS is an env-only SSRF guard.
     llm_allowed_servers = var.llm_allowed_servers
@@ -77,6 +81,11 @@ locals {
     oklog_prune_timer   = file("${path.module}/../systemd/oklog-prune.timer")
     oklog_prune         = file("${path.module}/../scripts/oklog-prune.sh")
     init_certs          = file("${path.module}/../scripts/init-certs.sh")
+
+    # nginx access-log size-cap unit + timer + script
+    oknginx_logrotate_service = file("${path.module}/../systemd/oknginx-logrotate.service")
+    oknginx_logrotate_timer   = file("${path.module}/../systemd/oknginx-logrotate.timer")
+    oknginx_logrotate         = file("${path.module}/../scripts/oknginx-logrotate.sh")
   })
 }
 

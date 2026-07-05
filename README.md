@@ -31,8 +31,8 @@ a containerized, **poll-based** deployment on UpCloud, fully rebuildable from co
 ```
 infra/        OpenTofu — UpCloud server + encrypted storage (backed up) + firewall + cloud-init
 compose/      docker-compose.yml, nginx + certbot + GoAccess + Vector config, env.example
-systemd/      okdeploy.service + okdeploy.timer (poll loop), oklog-prune.* (log retention)
-scripts/      okdeploy-pull.sh (pull + recreate changed services), oklog-prune.sh (prune old logs)
+systemd/      okdeploy.* (poll loop), oklog-prune.* (log retention), oknginx-logrotate.* (nginx access-log size cap)
+scripts/      okdeploy-pull.sh (pull + recreate changed services), oklog-prune.sh (prune old logs), oknginx-logrotate.sh (rotate nginx access.log)
 ```
 
 The VM is configured **by cloud-init only** (`infra/cloud-init.yaml.tftpl`):
@@ -215,6 +215,15 @@ Three complementary views, all behind the same basic-auth (`goaccess_htpasswd`):
   the VM's OS disk (`LOG_MOUNT`, default `/opt/openkoutsi/logs`), kept off the
   encrypted data device: they are transient and retention-pruned, so they don't
   belong in the backed-up data volume.
+
+  nginx's `access.log` is written as a real file for GoAccess, so — unlike the
+  Vector files above — it does not rotate daily and would grow unbounded on the OS
+  disk. The `oknginx-logrotate.timer` (hourly) caps it: when `access.log` exceeds
+  `NGINX_ACCESS_LOG_MAX_MB` (default 100, via the `nginx_access_log_max_mb`
+  variable) it is rotated, nginx is told to reopen its logs, and the old file is
+  gzip'd. `NGINX_ACCESS_LOG_KEEP` (default 5, via `nginx_access_log_keep`)
+  compressed generations are retained. GoAccess reads the live `access.log`, so
+  its report covers the current window since the last rotation.
 
 ### Backups and restore
 

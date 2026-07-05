@@ -84,6 +84,28 @@ variable "log_retention_days" {
   }
 }
 
+variable "nginx_access_log_max_mb" {
+  description = "Size cap (MB) for the nginx access.log before the oknginx-logrotate timer rotates it."
+  type        = number
+  default     = 100
+
+  validation {
+    condition     = var.nginx_access_log_max_mb >= 1 && var.nginx_access_log_max_mb <= 10240
+    error_message = "nginx_access_log_max_mb must be between 1 and 10240 MB."
+  }
+}
+
+variable "nginx_access_log_keep" {
+  description = "Number of compressed nginx access-log generations to retain after rotation."
+  type        = number
+  default     = 5
+
+  validation {
+    condition     = var.nginx_access_log_keep >= 1 && var.nginx_access_log_keep <= 100
+    error_message = "nginx_access_log_keep must be between 1 and 100."
+  }
+}
+
 # ── Access control ──────────────────────────────────────────────────────────
 
 variable "admin_cidr" {

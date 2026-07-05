@@ -46,6 +46,11 @@ services:
       # NEXT_PUBLIC_API_URL), so the client calls the public API instead of
       # falling back to its localhost:8000 default.
       API_URL: ${API_URL}
+      # BASE_URL is the web app's OWN public origin. Next.js renders robots.txt
+      # and sitemap.xml at request time from it; without it they emit empty,
+      # relative URLs (broken sitemap). It equals the site's front-end URL, so
+      # reuse FRONTEND_URL rather than introduce a second variable for one value.
+      BASE_URL: ${FRONTEND_URL}
     expose:
       - "3000"
 

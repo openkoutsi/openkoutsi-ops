@@ -123,8 +123,14 @@ variable "ssh_public_keys" {
 # (see README). These values drive nginx server_name and certbot domains only.
 
 variable "domain" {
-  description = "Apex domain, e.g. openkoutsi.example. The web app is served here."
+  description = "Apex domain, e.g. openkoutsi.example. The static landing page is served here."
   type        = string
+}
+
+variable "web_host" {
+  description = "Hostname for the web app (subdomain of the apex domain)."
+  type        = string
+  default     = "app"
 }
 
 variable "api_host" {

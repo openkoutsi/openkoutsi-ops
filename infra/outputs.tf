@@ -6,6 +6,7 @@ output "public_ipv4" {
 output "hostnames" {
   description = "FQDNs that need A records at the registrar (all -> public_ipv4)."
   value = {
+    landing       = local.landing_fqdn
     web           = local.web_fqdn
     api           = local.api_fqdn
     strava_bridge = local.strava_bridge_fqdn

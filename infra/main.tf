@@ -1,6 +1,9 @@
 locals {
   # Fully-qualified hostnames derived from the apex domain.
-  web_fqdn           = var.domain
+  # The web app lives on the `app.` subdomain; the apex serves the static
+  # landing page (openkoutsi-landing-page).
+  landing_fqdn       = var.domain
+  web_fqdn           = "${var.web_host}.${var.domain}"
   api_fqdn           = "${var.api_host}.${var.domain}"
   strava_bridge_fqdn = "${var.strava_bridge_host}.${var.domain}"
   wahoo_bridge_fqdn  = "${var.wahoo_bridge_host}.${var.domain}"
@@ -22,6 +25,7 @@ locals {
     ssh_public_keys = var.ssh_public_keys
 
     # Hostnames
+    landing_fqdn       = local.landing_fqdn
     web_fqdn           = local.web_fqdn
     api_fqdn           = local.api_fqdn
     strava_bridge_fqdn = local.strava_bridge_fqdn
@@ -66,6 +70,7 @@ locals {
     nginx_conf          = file("${path.module}/../compose/nginx/nginx.conf")
     nginx_api           = templatefile("${path.module}/../compose/nginx/conf.d/api.conf", { server_name = local.api_fqdn })
     nginx_web           = templatefile("${path.module}/../compose/nginx/conf.d/web.conf", { server_name = local.web_fqdn })
+    nginx_landing       = templatefile("${path.module}/../compose/nginx/conf.d/landing.conf", { server_name = local.landing_fqdn })
     nginx_strava_bridge = templatefile("${path.module}/../compose/nginx/conf.d/strava-bridge.conf", { server_name = local.strava_bridge_fqdn })
     nginx_wahoo_bridge  = templatefile("${path.module}/../compose/nginx/conf.d/wahoo-bridge.conf", { server_name = local.wahoo_bridge_fqdn })
     nginx_goaccess      = templatefile("${path.module}/../compose/nginx/conf.d/goaccess.conf", { server_name = local.stats_fqdn })

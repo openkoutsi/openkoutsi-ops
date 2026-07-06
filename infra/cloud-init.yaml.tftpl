@@ -44,6 +44,11 @@ write_files:
     content: |
       ${indent(6, nginx_web)}
 
+  - path: /opt/openkoutsi/nginx/conf.d/landing.conf
+    permissions: "0644"
+    content: |
+      ${indent(6, nginx_landing)}
+
   - path: /opt/openkoutsi/nginx/conf.d/strava-bridge.conf
     permissions: "0644"
     content: |
@@ -101,7 +106,7 @@ write_files:
       NGINX_ACCESS_LOG_MAX_MB=${nginx_access_log_max_mb}
       NGINX_ACCESS_LOG_KEEP=${nginx_access_log_keep}
       CERT_NAME=openkoutsi
-      CERT_DOMAINS="${web_fqdn} ${api_fqdn} ${strava_bridge_fqdn} ${wahoo_bridge_fqdn} ${stats_fqdn} ${logs_fqdn} ${metrics_fqdn}"
+      CERT_DOMAINS="${landing_fqdn} ${web_fqdn} ${api_fqdn} ${strava_bridge_fqdn} ${wahoo_bridge_fqdn} ${stats_fqdn} ${logs_fqdn} ${metrics_fqdn}"
       CERT_EMAIL=${certbot_email}
       CERT_STAGING=${certbot_staging}
 

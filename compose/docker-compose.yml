@@ -54,6 +54,17 @@ services:
     expose:
       - "3000"
 
+  # Static marketing landing page served at the apex (koutsi.dev). The image
+  # owns no port: on start it copies its baked static site into the shared
+  # landing_html volume, which nginx serves (see conf.d/landing.conf). Mirrors
+  # the goaccess report pattern below. Pull-only like every other image — a new
+  # :latest recreates this container, which re-publishes fresh content.
+  landing:
+    image: ghcr.io/openkoutsi/openkoutsi-landing-page:latest
+    restart: unless-stopped
+    volumes:
+      - landing_html:/dist
+
   strava_bridge:
     image: ghcr.io/openkoutsi/openkoutsi-strava-bridge:latest
     restart: unless-stopped
@@ -86,6 +97,7 @@ services:
     depends_on:
       - backend
       - web
+      - landing
       - strava_bridge
       - wahoo_bridge
       - dozzle
@@ -119,6 +131,7 @@ services:
       - certbot_www:/var/www/certbot:ro
       - nginx_logs:/var/log/nginx
       - goaccess_report:/usr/share/nginx/html/stats:ro
+      - landing_html:/usr/share/nginx/html/landing:ro
 
   certbot:
     image: certbot/certbot:latest
@@ -274,6 +287,10 @@ volumes:
       o: bind
       device: ${LOG_MOUNT}/service_logs
   goaccess_report:
+  # Landing-page static files: a plain Docker named volume (like goaccess_report),
+  # republished from the landing image on every deploy — transient, off the
+  # encrypted/backed-up data device.
+  landing_html:
   # Netdata's metrics DB + cache: plain Docker named volumes on the OS disk (like
   # goaccess_report), kept off the encrypted, backed-up data device — transient,
   # self-pruned monitoring data.

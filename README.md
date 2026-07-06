@@ -47,6 +47,7 @@ and writing secrets from TF variables. To change the box, re-render and re-provi
 | Strava bridge  | `ghcr.io/openkoutsi/openkoutsi-strava-bridge`  | 8084 | backend    |
 | Wahoo bridge   | `ghcr.io/openkoutsi/openkoutsi-wahoo-bridge`   | 8085 | backend    |
 | Web frontend   | `ghcr.io/openkoutsi/openkoutsi-web`            | 3000 | web        |
+| Landing page   | `ghcr.io/openkoutsi/openkoutsi-landing-page`   | —    | landing-page |
 
 The VM tracks the `latest` tag; CI also pushes immutable `sha-<sha>` tags for
 rollback. **Packages are public**, so the VM needs no pull credentials. (To switch
@@ -116,7 +117,8 @@ registrar**, all pointing at the `public_ipv4` output:
 
 | Record           | Host             |
 |------------------|------------------|
-| `@` (apex)       | web frontend     |
+| `@` (apex)       | landing page     |
+| `app`            | web frontend     |
 | `api`            | backend API      |
 | `bridge`         | Strava bridge    |
 | `wahoo-bridge`   | Wahoo bridge     |
@@ -127,8 +129,8 @@ registrar**, all pointing at the `public_ipv4` output:
 ### 5. TLS certificates (first-boot bootstrap)
 
 nginx terminates TLS with a **single Let's Encrypt SAN cert** (lineage
-`openkoutsi`) covering all seven hostnames (apex, `api`, `bridge`, `wahoo-bridge`,
-`stats`, `logs`, `metrics`). Because a fresh VM has no cert yet,
+`openkoutsi`) covering all eight hostnames (apex/landing, `app`, `api`, `bridge`,
+`wahoo-bridge`, `stats`, `logs`, `metrics`). Because a fresh VM has no cert yet,
 `scripts/init-certs.sh` breaks the usual nginx⇄certbot deadlock: it writes a
 throwaway self-signed cert so nginx can start, brings nginx up, obtains the real
 cert over the HTTP-01 webroot challenge, then reloads nginx onto it.

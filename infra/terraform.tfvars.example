@@ -17,12 +17,14 @@ admin_cidr      = "203.0.113.10/32" # your admin IP — SSH is allowed only from
 ssh_public_keys = ["ssh-ed25519 AAAA... you@host"]
 
 # ── DNS / domains (set matching A records at your registrar) ─────────────────
+# The apex domain serves the static landing page; the web app lives on web_host
+# (default "app", i.e. app.<domain>).
 domain        = "openkoutsi.example"
 certbot_email = "admin@openkoutsi.example"
 # certbot_staging = true   # use LE staging while testing first-boot, then set false
-# api_host / strava_bridge_host / wahoo_bridge_host / stats_host / logs_host /
-# metrics_host default to api / bridge / wahoo-bridge / stats / logs / metrics —
-# override only if needed.
+# web_host / api_host / strava_bridge_host / wahoo_bridge_host / stats_host /
+# logs_host / metrics_host default to app / api / bridge / wahoo-bridge / stats /
+# logs / metrics — override only if needed.
 
 # ── Non-secret app config ────────────────────────────────────────────────────
 strava_client_id    = "12345"

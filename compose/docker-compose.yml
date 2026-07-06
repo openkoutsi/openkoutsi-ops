@@ -102,14 +102,19 @@ services:
     #     own output and never parse a report). Strip that symlink (only if it IS
     #     a symlink, to preserve a real log across restarts) so nginx writes a
     #     real file.
-    #   error.log  — keep the stock symlink to /dev/stderr so nginx errors flow to
-    #     the container's stderr, where the log-collection stack (Vector's
-    #     per-service files + the Dozzle live viewer) captures them like every
-    #     other service. Making it a real file here hides errors from both (#23).
+    #   error.log  — point it at /dev/stderr so nginx errors flow to the
+    #     container's stderr, where the log-collection stack (Vector's per-service
+    #     files + the Dozzle live viewer) captures them like every other service.
+    #     We FORCE the symlink (`ln -sf`) rather than rely on the stock one:
+    #     an already-running VM's nginx_logs volume may hold a REAL error.log left
+    #     by an earlier config that stripped both symlinks, and nginx would keep
+    #     writing to that file — hiding errors from both collectors (#23). ln -sf
+    #     is idempotent (a no-op once it is already the right symlink).
     #
     # Reload every 6h so renewed certs from the certbot service are picked up.
     command: >
       sh -c "[ -L /var/log/nginx/access.log ] && rm -f /var/log/nginx/access.log;
+      ln -sf /dev/stderr /var/log/nginx/error.log;
       while :; do sleep 6h & wait $${!}; nginx -s reload; done & exec nginx -g 'daemon off;'"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro

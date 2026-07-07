@@ -42,9 +42,6 @@ services:
     image: ghcr.io/openkoutsi/openkoutsi-web:latest
     restart: unless-stopped
     environment:
-      # The web image reads API_URL at runtime (not the build-time-baked
-      # NEXT_PUBLIC_API_URL), so the client calls the public API instead of
-      # falling back to its localhost:8000 default.
       API_URL: ${API_URL}
       # BASE_URL is the web app's OWN public origin. Next.js renders robots.txt
       # and sitemap.xml at request time from it; without it they emit empty,

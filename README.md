@@ -14,7 +14,9 @@ a containerized, **poll-based** deployment on UpCloud, fully rebuildable from co
 - **Polling, not push.** A systemd timer (`okdeploy.timer`, every 2 min) runs
   `scripts/okdeploy-pull.sh` → `docker compose pull && up -d`, which recreates
   only services whose image digest changed. A poll where nothing moved is a
-  no-op.
+  no-op. When a recreate happens, the script reloads nginx (`nginx -s reload`)
+  so it re-resolves the recreated containers' new Docker-network IPs instead of
+  routing to the dead ones (nginx caches upstream IPs until reload).
 - **Secrets as files.** Secrets are delivered as individual files under
   `/opt/openkoutsi/secrets/<name>` and mounted by Compose at `/run/secrets/<name>`,
   where the apps read them (pydantic-settings `secrets_dir=/run/secrets`). They
@@ -32,7 +34,7 @@ a containerized, **poll-based** deployment on UpCloud, fully rebuildable from co
 infra/        OpenTofu — UpCloud server + encrypted storage (backed up) + firewall + cloud-init
 compose/      docker-compose.yml, nginx + certbot + GoAccess + Vector config, env.example
 systemd/      okdeploy.* (poll loop), oklog-prune.* (log retention), oknginx-logrotate.* (nginx access-log size cap)
-scripts/      okdeploy-pull.sh (pull + recreate changed services), oklog-prune.sh (prune old logs), oknginx-logrotate.sh (rotate nginx access.log)
+scripts/      okdeploy-pull.sh (pull + recreate changed services, reload nginx on change), oklog-prune.sh (prune old logs), oknginx-logrotate.sh (rotate nginx access.log)
 ```
 
 The VM is configured **by cloud-init only** (`infra/cloud-init.yaml.tftpl`):

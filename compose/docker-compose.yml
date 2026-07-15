@@ -26,6 +26,11 @@ services:
       # (stored in InstanceSettings) — not seeded here. LLM_ALLOWED_SERVERS is an
       # env-only SSRF guard (not an instance setting), so it stays.
       LLM_ALLOWED_SERVERS: ${LLM_ALLOWED_SERVERS}
+      # Outbound transactional email (issue #15): verification + password-reset
+      # messages go through the swappable email module. Optional — with no API key
+      # secret set, self-serve signup and email password reset stay unavailable.
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER}
+      EMAIL_FROM: ${EMAIL_FROM}
     volumes:
       - backend_data:/data
     secrets:
@@ -35,6 +40,10 @@ services:
       - bridge_secret
       - wahoo_client_secret
       - wahoo_bridge_secret
+      # Outbound-email API tokens (set the one matching EMAIL_PROVIDER; leave the
+      # file empty to keep email — and thus self-serve signup/reset — disabled).
+      - lettermint_api_key
+      - euromail_api_key
     expose:
       - "8000"
 
@@ -309,3 +318,7 @@ secrets:
     file: ./secrets/wahoo_bridge_secret
   wahoo_webhook_token:
     file: ./secrets/wahoo_webhook_token
+  lettermint_api_key:
+    file: ./secrets/lettermint_api_key
+  euromail_api_key:
+    file: ./secrets/euromail_api_key

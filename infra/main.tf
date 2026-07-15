@@ -48,6 +48,8 @@ locals {
     llm_allowed_servers = var.llm_allowed_servers
     strava_client_id    = var.strava_client_id
     wahoo_client_id     = var.wahoo_client_id
+    email_provider      = var.email_provider
+    email_from          = var.email_from
 
     # Dashboard auth
     goaccess_htpasswd = var.goaccess_htpasswd
@@ -60,6 +62,8 @@ locals {
     wahoo_client_secret  = var.wahoo_client_secret
     wahoo_bridge_secret  = var.wahoo_bridge_secret
     wahoo_webhook_token  = var.wahoo_webhook_token
+    lettermint_api_key   = var.lettermint_api_key
+    euromail_api_key     = var.euromail_api_key
 
     # Optional private-registry login
     ghcr_username = var.ghcr_username

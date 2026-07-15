@@ -203,6 +203,18 @@ variable "wahoo_client_id" {
   default     = ""
 }
 
+variable "email_provider" {
+  description = "Outbound email provider (issue #15): \"lettermint\" or \"euromail\"."
+  type        = string
+  default     = "lettermint"
+}
+
+variable "email_from" {
+  description = "Sender address for outbound transactional email. Empty keeps self-serve signup/reset disabled."
+  type        = string
+  default     = ""
+}
+
 # ── GoAccess dashboard auth ─────────────────────────────────────────────────
 
 variable "goaccess_htpasswd" {
@@ -260,6 +272,20 @@ variable "wahoo_bridge_secret" {
 
 variable "wahoo_webhook_token" {
   description = "Token Wahoo embeds in webhook payloads (Wahoo bridge side)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "lettermint_api_key" {
+  description = "Lettermint API token for outbound email (issue #15). Empty keeps email disabled."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "euromail_api_key" {
+  description = "EuroMail API token for outbound email (issue #15). Empty keeps email disabled."
   type        = string
   sensitive   = true
   default     = ""

@@ -32,6 +32,11 @@ wahoo_client_id     = ""
 # LLM base URL / model / API key are set on the admin settings page, not here.
 llm_allowed_servers = "" # env-only SSRF allowlist (optional)
 
+# Outbound email (issue #15) — enables self-serve signup + password reset.
+# Leave email_from empty (and the API-key secret unset) to keep email disabled.
+email_provider = "lettermint" # or "euromail"
+email_from     = ""
+
 # ── Dashboard auth (htpasswd -nB admin) ──────────────────────────────────────
 # goaccess_htpasswd = "admin:$2y$05$..."   # set via TF_VAR_goaccess_htpasswd
 
@@ -43,6 +48,8 @@ llm_allowed_servers = "" # env-only SSRF allowlist (optional)
 # wahoo_client_secret  = ""
 # wahoo_bridge_secret  = "..."
 # wahoo_webhook_token  = "..."
+# lettermint_api_key   = "..."   # outbound email (EMAIL_PROVIDER=lettermint)
+# euromail_api_key     = "..."   # outbound email (EMAIL_PROVIDER=euromail)
 
 # ── GHCR (leave empty — images are public) ───────────────────────────────────
 # ghcr_username = ""

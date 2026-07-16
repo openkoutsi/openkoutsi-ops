@@ -102,6 +102,8 @@ write_files:
       STRAVA_CLIENT_ID=${strava_client_id}
       WAHOO_CLIENT_ID=${wahoo_client_id}
       LLM_ALLOWED_SERVERS=${llm_allowed_servers}
+      EMAIL_PROVIDER=${email_provider}
+      EMAIL_FROM=${email_from}
       LOG_RETENTION_DAYS=${log_retention_days}
       NGINX_ACCESS_LOG_MAX_MB=${nginx_access_log_max_mb}
       NGINX_ACCESS_LOG_KEEP=${nginx_access_log_keep}
@@ -205,6 +207,12 @@ write_files:
   - path: /opt/openkoutsi/secrets/wahoo_webhook_token
     permissions: "0444"
     content: ${wahoo_webhook_token}
+  - path: /opt/openkoutsi/secrets/lettermint_api_key
+    permissions: "0444"
+    content: ${lettermint_api_key}
+  - path: /opt/openkoutsi/secrets/euromail_api_key
+    permissions: "0444"
+    content: ${euromail_api_key}
 
   # ── First-boot provisioning script ─────────────────────────────────────
   - path: /opt/openkoutsi/scripts/bootstrap.sh

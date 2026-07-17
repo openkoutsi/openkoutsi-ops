@@ -152,7 +152,7 @@ variable "wahoo_bridge_host" {
 }
 
 variable "inbound_bridge_host" {
-  description = "Hostname for the optional inbound-email bridge (issue #38). Only used when inbound_email_enabled = true."
+  description = "Hostname for the inbound-email bridge (issue #38)."
   type        = string
   default     = "inbound-bridge"
 }
@@ -221,20 +221,13 @@ variable "email_from" {
   default     = ""
 }
 
-# ── Inbound email (issue #38) — opt-in, off by default ──────────────────────
-# When enabled, cloud-init runs the optional inbound-email bridge (Compose
-# "inbound-email" profile), renders its nginx vhost, adds its host to the TLS
-# SAN cert, and tells the backend to poll it. Leaving this false means a normal
-# apply provisions exactly as before — no inbound bridge, no extra cert name.
-
-variable "inbound_email_enabled" {
-  description = "Run the optional inbound-email bridge and have the backend poll it (issue #38). Requires the inbound_bridge A record + MX/SPF/DMARC to be set before re-issuing the TLS cert."
-  type        = bool
-  default     = false
-}
+# ── Inbound email (issue #38) ───────────────────────────────────────────────
+# The public instance runs the inbound-email bridge as a standard service (like
+# the Strava/Wahoo bridges); the backend polls it. Provide the operator address
+# here and the two secrets below.
 
 variable "inbound_email_address" {
-  description = "Operator address inbound mail is accepted for (e.g. lassi@koutsi.dev). Only used when inbound_email_enabled = true."
+  description = "Operator address inbound mail is accepted for (e.g. lassi@koutsi.dev)."
   type        = string
   default     = ""
 }
@@ -316,7 +309,7 @@ variable "euromail_api_key" {
 }
 
 variable "inbound_bridge_secret" {
-  description = "Shared bearer secret between backend and the inbound-email bridge (issue #38). Empty keeps inbound disabled."
+  description = "Shared bearer secret between backend and the inbound-email bridge (issue #38)."
   type        = string
   sensitive   = true
   default     = ""

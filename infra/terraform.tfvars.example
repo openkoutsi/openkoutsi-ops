@@ -37,12 +37,11 @@ llm_allowed_servers = "" # env-only SSRF allowlist (optional)
 email_provider = "lettermint" # or "euromail"
 email_from     = ""
 
-# Inbound email (issue #38) — opt-in, off by default. When true, cloud-init runs
-# the inbound-email bridge, adds inbound_bridge.<domain> to the TLS SAN cert, and
-# has the backend poll it. Set the inbound_bridge A record + MX/SPF/DMARC BEFORE
-# re-issuing the cert. Provide inbound_bridge_secret + euromail_webhook_secret as
-# secrets (below). inbound_bridge_host defaults to "inbound-bridge".
-# inbound_email_enabled = false
+# Inbound email (issue #38) — the public instance runs the inbound-email bridge
+# as a standard service. Set the operator address here, and provide
+# inbound_bridge_secret + euromail_webhook_secret as secrets (below). The
+# inbound_bridge A record + MX/SPF/DMARC must exist (the host is on the SAN cert).
+# inbound_bridge_host defaults to "inbound-bridge".
 # inbound_email_address = "lassi@openkoutsi.example"
 
 # ── Dashboard auth (htpasswd -nB admin) ──────────────────────────────────────

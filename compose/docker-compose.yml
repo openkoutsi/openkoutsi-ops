@@ -107,16 +107,12 @@ services:
     expose:
       - "8085"
 
-  # Optional inbound-email bridge (issue #38). Gated behind the "inbound-email"
-  # Compose profile, so it only starts when COMPOSE_PROFILES includes it (set by
-  # cloud-init when inbound_email_enabled = true). It verifies and *holds*
-  # operator-address mail; the backend polls it. nginx deliberately does NOT
-  # depend_on it (a non-profile service depending on a profiled one would force
-  # it to start), so its vhost resolves the upstream lazily via the Docker DNS
-  # resolver — see conf.d/inbound-bridge.conf.
+  # Inbound-email bridge (issue #38). The public instance runs it like the other
+  # bridges: it verifies and *holds* operator-address mail, and the backend polls
+  # it. (Self-hosters who don't want inbound email use the off-by-default Compose
+  # profile in the backend repo instead; here it's always on.)
   inbound_bridge:
     image: ghcr.io/openkoutsi/openkoutsi-inbound-bridge:latest
-    profiles: ["inbound-email"]
     restart: unless-stopped
     environment:
       DATABASE_PATH: /data/bridge.db
@@ -137,6 +133,7 @@ services:
       - landing
       - strava_bridge
       - wahoo_bridge
+      - inbound_bridge
       - dozzle
       - netdata
     ports:
@@ -297,8 +294,7 @@ volumes:
       type: none
       o: bind
       device: ${DATA_MOUNT}/wahoo_bridge
-  # Only created when the inbound-email profile is active; the bind target is
-  # made by bootstrap.sh alongside the other bridge data dirs.
+  # Bind target is made by bootstrap.sh alongside the other bridge data dirs.
   inbound_bridge_data:
     driver: local
     driver_opts:

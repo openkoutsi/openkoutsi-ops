@@ -37,10 +37,7 @@ locals {
     certbot_email      = var.certbot_email
     certbot_staging    = var.certbot_staging ? "1" : "0"
 
-    # Inbound email (issue #38) — opt-in. When disabled, the fqdn is still passed
-    # (for the compose var) but the vhost renders empty, the profile is off, and
-    # the cert SAN excludes it, so nothing changes on a normal apply.
-    inbound_email_enabled = var.inbound_email_enabled
+    # Inbound email (issue #38) — a standard service on the public instance.
     inbound_bridge_fqdn   = local.inbound_bridge_fqdn
     inbound_email_address = var.inbound_email_address
 
@@ -87,10 +84,7 @@ locals {
     nginx_landing       = templatefile("${path.module}/../compose/nginx/conf.d/landing.conf", { server_name = local.landing_fqdn })
     nginx_strava_bridge = templatefile("${path.module}/../compose/nginx/conf.d/strava-bridge.conf", { server_name = local.strava_bridge_fqdn })
     nginx_wahoo_bridge  = templatefile("${path.module}/../compose/nginx/conf.d/wahoo-bridge.conf", { server_name = local.wahoo_bridge_fqdn })
-    # Opt-in (issue #38): render the vhost only when enabled; otherwise pass an
-    # empty string so cloud-init writes an empty conf and nginx has nothing
-    # referencing the (absent) inbound_bridge upstream.
-    nginx_inbound       = var.inbound_email_enabled ? templatefile("${path.module}/../compose/nginx/conf.d/inbound-bridge.conf", { server_name = local.inbound_bridge_fqdn }) : ""
+    nginx_inbound       = templatefile("${path.module}/../compose/nginx/conf.d/inbound-bridge.conf", { server_name = local.inbound_bridge_fqdn })
     nginx_goaccess      = templatefile("${path.module}/../compose/nginx/conf.d/goaccess.conf", { server_name = local.stats_fqdn })
     nginx_logs          = templatefile("${path.module}/../compose/nginx/conf.d/logs.conf", { server_name = local.logs_fqdn })
     nginx_metrics       = templatefile("${path.module}/../compose/nginx/conf.d/metrics.conf", { server_name = local.metrics_fqdn })

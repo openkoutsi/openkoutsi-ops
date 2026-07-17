@@ -22,9 +22,9 @@ ssh_public_keys = ["ssh-ed25519 AAAA... you@host"]
 domain        = "openkoutsi.example"
 certbot_email = "admin@openkoutsi.example"
 # certbot_staging = true   # use LE staging while testing first-boot, then set false
-# web_host / api_host / strava_bridge_host / wahoo_bridge_host / stats_host /
-# logs_host / metrics_host default to app / api / bridge / wahoo-bridge / stats /
-# logs / metrics — override only if needed.
+# web_host / api_host / strava_bridge_host / wahoo_bridge_host / inbound_bridge_host /
+# stats_host / logs_host / metrics_host default to app / api / bridge / wahoo-bridge /
+# inbound-bridge / stats / logs / metrics — override only if needed.
 
 # ── Non-secret app config ────────────────────────────────────────────────────
 strava_client_id    = "12345"
@@ -36,6 +36,14 @@ llm_allowed_servers = "" # env-only SSRF allowlist (optional)
 # Leave email_from empty (and the API-key secret unset) to keep email disabled.
 email_provider = "lettermint" # or "euromail"
 email_from     = ""
+
+# Inbound email (issue #38) — opt-in, off by default. When true, cloud-init runs
+# the inbound-email bridge, adds inbound_bridge.<domain> to the TLS SAN cert, and
+# has the backend poll it. Set the inbound_bridge A record + MX/SPF/DMARC BEFORE
+# re-issuing the cert. Provide inbound_bridge_secret + euromail_webhook_secret as
+# secrets (below). inbound_bridge_host defaults to "inbound-bridge".
+# inbound_email_enabled = false
+# inbound_email_address = "lassi@openkoutsi.example"
 
 # ── Dashboard auth (htpasswd -nB admin) ──────────────────────────────────────
 # goaccess_htpasswd = "admin:$2y$05$..."   # set via TF_VAR_goaccess_htpasswd
@@ -50,6 +58,8 @@ email_from     = ""
 # wahoo_webhook_token  = "..."
 # lettermint_api_key   = "..."   # outbound email (EMAIL_PROVIDER=lettermint)
 # euromail_api_key     = "..."   # outbound email (EMAIL_PROVIDER=euromail)
+# inbound_bridge_secret   = "..."   # inbound email (issue #38): backend <-> inbound bridge bearer
+# euromail_webhook_secret = "..."   # inbound email (issue #38): EuroMail webhook signing secret
 
 # ── GHCR (leave empty — images are public) ───────────────────────────────────
 # ghcr_username = ""

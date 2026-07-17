@@ -151,6 +151,12 @@ variable "wahoo_bridge_host" {
   default     = "wahoo-bridge"
 }
 
+variable "inbound_bridge_host" {
+  description = "Hostname for the optional inbound-email bridge (issue #38). Only used when inbound_email_enabled = true."
+  type        = string
+  default     = "inbound-bridge"
+}
+
 variable "stats_host" {
   description = "Hostname for the GoAccess access-log dashboard."
   type        = string
@@ -211,6 +217,24 @@ variable "email_provider" {
 
 variable "email_from" {
   description = "Sender address for outbound transactional email. Empty keeps self-serve signup/reset disabled."
+  type        = string
+  default     = ""
+}
+
+# ── Inbound email (issue #38) — opt-in, off by default ──────────────────────
+# When enabled, cloud-init runs the optional inbound-email bridge (Compose
+# "inbound-email" profile), renders its nginx vhost, adds its host to the TLS
+# SAN cert, and tells the backend to poll it. Leaving this false means a normal
+# apply provisions exactly as before — no inbound bridge, no extra cert name.
+
+variable "inbound_email_enabled" {
+  description = "Run the optional inbound-email bridge and have the backend poll it (issue #38). Requires the inbound_bridge A record + MX/SPF/DMARC to be set before re-issuing the TLS cert."
+  type        = bool
+  default     = false
+}
+
+variable "inbound_email_address" {
+  description = "Operator address inbound mail is accepted for (e.g. lassi@koutsi.dev). Only used when inbound_email_enabled = true."
   type        = string
   default     = ""
 }
@@ -286,6 +310,20 @@ variable "lettermint_api_key" {
 
 variable "euromail_api_key" {
   description = "EuroMail API token for outbound email (issue #15). Empty keeps email disabled."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "inbound_bridge_secret" {
+  description = "Shared bearer secret between backend and the inbound-email bridge (issue #38). Empty keeps inbound disabled."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "euromail_webhook_secret" {
+  description = "EuroMail inbound webhook signing secret, verified by the inbound-email bridge (issue #38)."
   type        = string
   sensitive   = true
   default     = ""

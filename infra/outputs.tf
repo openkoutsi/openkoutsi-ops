@@ -4,8 +4,8 @@ output "public_ipv4" {
 }
 
 output "hostnames" {
-  description = "FQDNs that need A records at the registrar (all -> public_ipv4)."
-  value = {
+  description = "FQDNs that need A records at the registrar (all -> public_ipv4). The inbound_bridge entry only appears when inbound_email_enabled = true."
+  value = merge({
     landing       = local.landing_fqdn
     web           = local.web_fqdn
     api           = local.api_fqdn
@@ -14,7 +14,7 @@ output "hostnames" {
     stats         = local.stats_fqdn
     logs          = local.logs_fqdn
     metrics       = local.metrics_fqdn
-  }
+  }, var.inbound_email_enabled ? { inbound_bridge = local.inbound_bridge_fqdn } : {})
 }
 
 output "data_storage_id" {

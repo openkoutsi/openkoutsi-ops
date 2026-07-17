@@ -2,14 +2,15 @@ locals {
   # Fully-qualified hostnames derived from the apex domain.
   # The web app lives on the `app.` subdomain; the apex serves the static
   # landing page (openkoutsi-landing-page).
-  landing_fqdn       = var.domain
-  web_fqdn           = "${var.web_host}.${var.domain}"
-  api_fqdn           = "${var.api_host}.${var.domain}"
-  strava_bridge_fqdn = "${var.strava_bridge_host}.${var.domain}"
-  wahoo_bridge_fqdn  = "${var.wahoo_bridge_host}.${var.domain}"
-  stats_fqdn         = "${var.stats_host}.${var.domain}"
-  logs_fqdn          = "${var.logs_host}.${var.domain}"
-  metrics_fqdn       = "${var.metrics_host}.${var.domain}"
+  landing_fqdn        = var.domain
+  web_fqdn            = "${var.web_host}.${var.domain}"
+  api_fqdn            = "${var.api_host}.${var.domain}"
+  strava_bridge_fqdn  = "${var.strava_bridge_host}.${var.domain}"
+  wahoo_bridge_fqdn   = "${var.wahoo_bridge_host}.${var.domain}"
+  inbound_bridge_fqdn = "${var.inbound_bridge_host}.${var.domain}"
+  stats_fqdn          = "${var.stats_host}.${var.domain}"
+  logs_fqdn           = "${var.logs_host}.${var.domain}"
+  metrics_fqdn        = "${var.metrics_host}.${var.domain}"
 
   data_mount = "/opt/openkoutsi/data"
 
@@ -36,6 +37,13 @@ locals {
     certbot_email      = var.certbot_email
     certbot_staging    = var.certbot_staging ? "1" : "0"
 
+    # Inbound email (issue #38) — opt-in. When disabled, the fqdn is still passed
+    # (for the compose var) but the vhost renders empty, the profile is off, and
+    # the cert SAN excludes it, so nothing changes on a normal apply.
+    inbound_email_enabled = var.inbound_email_enabled
+    inbound_bridge_fqdn   = local.inbound_bridge_fqdn
+    inbound_email_address = var.inbound_email_address
+
     # Service-log retention (days) enforced by the oklog-prune timer.
     log_retention_days = var.log_retention_days
 
@@ -55,15 +63,17 @@ locals {
     goaccess_htpasswd = var.goaccess_htpasswd
 
     # Secrets (written to /opt/openkoutsi/secrets/<name>, mode 0400)
-    secret_key           = var.secret_key
-    encryption_key       = var.encryption_key
-    strava_client_secret = var.strava_client_secret
-    bridge_secret        = var.bridge_secret
-    wahoo_client_secret  = var.wahoo_client_secret
-    wahoo_bridge_secret  = var.wahoo_bridge_secret
-    wahoo_webhook_token  = var.wahoo_webhook_token
-    lettermint_api_key   = var.lettermint_api_key
-    euromail_api_key     = var.euromail_api_key
+    secret_key              = var.secret_key
+    encryption_key          = var.encryption_key
+    strava_client_secret    = var.strava_client_secret
+    bridge_secret           = var.bridge_secret
+    wahoo_client_secret     = var.wahoo_client_secret
+    wahoo_bridge_secret     = var.wahoo_bridge_secret
+    wahoo_webhook_token     = var.wahoo_webhook_token
+    lettermint_api_key      = var.lettermint_api_key
+    euromail_api_key        = var.euromail_api_key
+    inbound_bridge_secret   = var.inbound_bridge_secret
+    euromail_webhook_secret = var.euromail_webhook_secret
 
     # Optional private-registry login
     ghcr_username = var.ghcr_username
@@ -77,6 +87,10 @@ locals {
     nginx_landing       = templatefile("${path.module}/../compose/nginx/conf.d/landing.conf", { server_name = local.landing_fqdn })
     nginx_strava_bridge = templatefile("${path.module}/../compose/nginx/conf.d/strava-bridge.conf", { server_name = local.strava_bridge_fqdn })
     nginx_wahoo_bridge  = templatefile("${path.module}/../compose/nginx/conf.d/wahoo-bridge.conf", { server_name = local.wahoo_bridge_fqdn })
+    # Opt-in (issue #38): render the vhost only when enabled; otherwise pass an
+    # empty string so cloud-init writes an empty conf and nginx has nothing
+    # referencing the (absent) inbound_bridge upstream.
+    nginx_inbound       = var.inbound_email_enabled ? templatefile("${path.module}/../compose/nginx/conf.d/inbound-bridge.conf", { server_name = local.inbound_bridge_fqdn }) : ""
     nginx_goaccess      = templatefile("${path.module}/../compose/nginx/conf.d/goaccess.conf", { server_name = local.stats_fqdn })
     nginx_logs          = templatefile("${path.module}/../compose/nginx/conf.d/logs.conf", { server_name = local.logs_fqdn })
     nginx_metrics       = templatefile("${path.module}/../compose/nginx/conf.d/metrics.conf", { server_name = local.metrics_fqdn })

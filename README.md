@@ -48,7 +48,6 @@ and writing secrets from TF variables. To change the box, re-render and re-provi
 | Backend        | `ghcr.io/openkoutsi/openkoutsi-backend`        | 8000 | backend    |
 | Strava bridge  | `ghcr.io/openkoutsi/openkoutsi-strava-bridge`  | 8084 | backend    |
 | Wahoo bridge   | `ghcr.io/openkoutsi/openkoutsi-wahoo-bridge`   | 8085 | backend    |
-| Inbound bridge | `ghcr.io/openkoutsi/openkoutsi-inbound-bridge` | 8086 | backend    |
 | Web frontend   | `ghcr.io/openkoutsi/openkoutsi-web`            | 3000 | web        |
 | Landing page   | `ghcr.io/openkoutsi/openkoutsi-landing-page`   | —    | landing-page |
 
@@ -56,10 +55,6 @@ The VM tracks the `latest` tag; CI also pushes immutable `sha-<sha>` tags for
 rollback. **Packages are public**, so the VM needs no pull credentials. (To switch
 to private packages, set `ghcr_username`/`ghcr_token` and cloud-init will
 `docker login`.)
-
-The **inbound bridge** (issue #38) runs like the other bridges: it verifies and
-holds mail sent to the operator address, and the backend polls it. See
-[Inbound email](#inbound-email).
 
 Alongside the app images the stack runs a few pinned third-party containers:
 `nginx` (TLS/reverse proxy), `certbot` (TLS renewal), `allinurl/goaccess`
@@ -129,30 +124,15 @@ registrar**, all pointing at the `public_ipv4` output:
 | `api`            | backend API      |
 | `bridge`         | Strava bridge    |
 | `wahoo-bridge`   | Wahoo bridge     |
-| `inbound-bridge` | Inbound email bridge (issue #38) |
 | `stats`          | GoAccess report  |
 | `logs`           | Dozzle log viewer |
 | `metrics`        | Netdata metrics dashboard |
 
-**Inbound email (issue #38)** also needs mail records so the provider can
-receive mail for the operator address:
-
-| Record   | Host   | Type  | Value                                             |
-|----------|--------|-------|---------------------------------------------------|
-| MX       | `@`    | MX    | the email provider's inbound MX (see EuroMail docs) |
-| SPF      | `@`    | TXT   | `v=spf1 include:<provider> -all`                  |
-| DMARC    | `_dmarc` | TXT | `v=DMARC1; p=quarantine; rua=mailto:<operator>`   |
-
-Then, in the provider dashboard, point the inbound route for the operator
-address at `https://inbound-bridge.<domain>/webhook/euromail` (each provider has
-its own path). See the backend `DEPLOY.md` "Inbound Email Bridge" section.
-
 ### 5. TLS certificates (first-boot bootstrap)
 
 nginx terminates TLS with a **single Let's Encrypt SAN cert** (lineage
-`openkoutsi`) covering all nine hostnames (apex/landing, `app`, `api`, `bridge`,
-`wahoo-bridge`, `inbound-bridge`, `stats`, `logs`, `metrics`). Because a fresh VM
-has no cert yet,
+`openkoutsi`) covering all eight hostnames (apex/landing, `app`, `api`, `bridge`,
+`wahoo-bridge`, `stats`, `logs`, `metrics`). Because a fresh VM has no cert yet,
 `scripts/init-certs.sh` breaks the usual nginx⇄certbot deadlock: it writes a
 throwaway self-signed cert so nginx can start, brings nginx up, obtains the real
 cert over the HTTP-01 webroot challenge, then reloads nginx onto it.
@@ -179,30 +159,6 @@ Tips:
 - Force a re-issue at any time with `sudo FORCE_CERT=1 bash scripts/init-certs.sh`.
 - Renewals are automatic: the `certbot` service renews every 12h and nginx
   reloads every 6h to pick up the new cert.
-
-### Inbound email
-
-The public instance surfaces mail sent to the operator address in the admin
-inbox (issue #38). The `inbound_bridge` service verifies and holds inbound mail
-and the backend polls it — wired like the other bridges, so a normal `tofu apply`
-provisions it. To configure it:
-
-1. Set `inbound_email_address` in your tfvars and provide the two secrets (via
-   `TF_VAR_*` or `secrets.auto.tfvars`):
-   ```bash
-   # inbound_bridge_secret (backend <-> bridge bearer)
-   python -c "import secrets; print(secrets.token_hex(32))"
-   # euromail_webhook_secret — copy from the EuroMail dashboard's inbound route
-   ```
-2. Ensure the `inbound-bridge` A record and the MX/SPF/DMARC records exist (see
-   [DNS](#4-dns-registrar)) — the host is on the SAN cert, so its A record must
-   resolve before the cert can be issued.
-3. In the EuroMail dashboard, point the operator address's inbound route at
-   `https://inbound-bridge.<domain>/webhook/euromail`.
-
-(Self-hosters who don't want inbound email use the off-by-default Compose profile
-+ `INBOUND_EMAIL_ENABLED` flag in the backend repo instead; on the public
-instance it's always on.)
 
 ## Operations
 

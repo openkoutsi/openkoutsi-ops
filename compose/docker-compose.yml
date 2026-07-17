@@ -31,6 +31,13 @@ services:
       # secret set, self-serve signup and email password reset stay unavailable.
       EMAIL_PROVIDER: ${EMAIL_PROVIDER}
       EMAIL_FROM: ${EMAIL_FROM}
+      # Inbound email (issue #38): the backend polls the optional inbound bridge
+      # for operator-address mail and fans it out to admins. Off unless
+      # INBOUND_EMAIL_ENABLED=true and the bridge URL/secret are set — the poller
+      # is otherwise inactive, so this is a no-op on instances not using it.
+      INBOUND_EMAIL_ENABLED: ${INBOUND_EMAIL_ENABLED}
+      INBOUND_EMAIL_ADDRESS: ${INBOUND_EMAIL_ADDRESS}
+      INBOUND_BRIDGE_URL: ${INBOUND_BRIDGE_URL}
     volumes:
       - backend_data:/data
     secrets:
@@ -44,6 +51,9 @@ services:
       # file empty to keep email — and thus self-serve signup/reset — disabled).
       - lettermint_api_key
       - euromail_api_key
+      # Shared bearer for polling the inbound bridge (issue #38); empty file when
+      # inbound email is off.
+      - inbound_bridge_secret
     expose:
       - "8000"
 
@@ -97,6 +107,23 @@ services:
     expose:
       - "8085"
 
+  # Inbound-email bridge (issue #38). The public instance runs it like the other
+  # bridges: it verifies and *holds* operator-address mail, and the backend polls
+  # it. (Self-hosters who don't want inbound email use the off-by-default Compose
+  # profile in the backend repo instead; here it's always on.)
+  inbound_bridge:
+    image: ghcr.io/openkoutsi/openkoutsi-inbound-bridge:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_PATH: /data/bridge.db
+    volumes:
+      - inbound_bridge_data:/data
+    secrets:
+      - inbound_bridge_secret
+      - euromail_webhook_secret
+    expose:
+      - "8086"
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
@@ -106,6 +133,7 @@ services:
       - landing
       - strava_bridge
       - wahoo_bridge
+      - inbound_bridge
       - dozzle
       - netdata
     ports:
@@ -266,6 +294,13 @@ volumes:
       type: none
       o: bind
       device: ${DATA_MOUNT}/wahoo_bridge
+  # Bind target is made by bootstrap.sh alongside the other bridge data dirs.
+  inbound_bridge_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_MOUNT}/inbound_bridge
   letsencrypt:
     driver: local
     driver_opts:
@@ -322,3 +357,8 @@ secrets:
     file: ./secrets/lettermint_api_key
   euromail_api_key:
     file: ./secrets/euromail_api_key
+  # Inbound email (issue #38); empty files unless inbound email is enabled.
+  inbound_bridge_secret:
+    file: ./secrets/inbound_bridge_secret
+  euromail_webhook_secret:
+    file: ./secrets/euromail_webhook_secret

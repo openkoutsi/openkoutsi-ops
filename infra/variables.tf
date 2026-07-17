@@ -151,6 +151,12 @@ variable "wahoo_bridge_host" {
   default     = "wahoo-bridge"
 }
 
+variable "inbound_bridge_host" {
+  description = "Hostname for the inbound-email bridge (issue #38)."
+  type        = string
+  default     = "inbound-bridge"
+}
+
 variable "stats_host" {
   description = "Hostname for the GoAccess access-log dashboard."
   type        = string
@@ -211,6 +217,17 @@ variable "email_provider" {
 
 variable "email_from" {
   description = "Sender address for outbound transactional email. Empty keeps self-serve signup/reset disabled."
+  type        = string
+  default     = ""
+}
+
+# ── Inbound email (issue #38) ───────────────────────────────────────────────
+# The public instance runs the inbound-email bridge as a standard service (like
+# the Strava/Wahoo bridges); the backend polls it. Provide the operator address
+# here and the two secrets below.
+
+variable "inbound_email_address" {
+  description = "Operator address inbound mail is accepted for (e.g. lassi@koutsi.dev)."
   type        = string
   default     = ""
 }
@@ -286,6 +303,20 @@ variable "lettermint_api_key" {
 
 variable "euromail_api_key" {
   description = "EuroMail API token for outbound email (issue #15). Empty keeps email disabled."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "inbound_bridge_secret" {
+  description = "Shared bearer secret between backend and the inbound-email bridge (issue #38)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "euromail_webhook_secret" {
+  description = "EuroMail inbound webhook signing secret, verified by the inbound-email bridge (issue #38)."
   type        = string
   sensitive   = true
   default     = ""

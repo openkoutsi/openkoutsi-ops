@@ -59,6 +59,12 @@ write_files:
     content: |
       ${indent(6, nginx_wahoo_bridge)}
 
+  # Inbound-email bridge vhost (issue #38).
+  - path: /opt/openkoutsi/nginx/conf.d/inbound-bridge.conf
+    permissions: "0644"
+    content: |
+      ${indent(6, nginx_inbound)}
+
   - path: /opt/openkoutsi/nginx/conf.d/goaccess.conf
     permissions: "0644"
     content: |
@@ -104,11 +110,16 @@ write_files:
       LLM_ALLOWED_SERVERS=${llm_allowed_servers}
       EMAIL_PROVIDER=${email_provider}
       EMAIL_FROM=${email_from}
+      # Inbound email (issue #38) — a standard service on the public instance; the
+      # backend polls it.
+      INBOUND_EMAIL_ENABLED=true
+      INBOUND_EMAIL_ADDRESS=${inbound_email_address}
+      INBOUND_BRIDGE_URL=https://${inbound_bridge_fqdn}
       LOG_RETENTION_DAYS=${log_retention_days}
       NGINX_ACCESS_LOG_MAX_MB=${nginx_access_log_max_mb}
       NGINX_ACCESS_LOG_KEEP=${nginx_access_log_keep}
       CERT_NAME=openkoutsi
-      CERT_DOMAINS="${landing_fqdn} ${web_fqdn} ${api_fqdn} ${strava_bridge_fqdn} ${wahoo_bridge_fqdn} ${stats_fqdn} ${logs_fqdn} ${metrics_fqdn}"
+      CERT_DOMAINS="${landing_fqdn} ${web_fqdn} ${api_fqdn} ${strava_bridge_fqdn} ${wahoo_bridge_fqdn} ${inbound_bridge_fqdn} ${stats_fqdn} ${logs_fqdn} ${metrics_fqdn}"
       CERT_EMAIL=${certbot_email}
       CERT_STAGING=${certbot_staging}
 
@@ -213,6 +224,15 @@ write_files:
   - path: /opt/openkoutsi/secrets/euromail_api_key
     permissions: "0444"
     content: ${euromail_api_key}
+  # Inbound email (issue #38). Written unconditionally (empty when unused) — the
+  # backend service mounts inbound_bridge_secret even while the poller is idle,
+  # and Compose needs both secret files to exist to parse the stack.
+  - path: /opt/openkoutsi/secrets/inbound_bridge_secret
+    permissions: "0444"
+    content: ${inbound_bridge_secret}
+  - path: /opt/openkoutsi/secrets/euromail_webhook_secret
+    permissions: "0444"
+    content: ${euromail_webhook_secret}
 
   # ── First-boot provisioning script ─────────────────────────────────────
   - path: /opt/openkoutsi/scripts/bootstrap.sh
@@ -247,7 +267,7 @@ write_files:
       grep -q "$${DATA_MOUNT}" /etc/fstab || \
         echo "LABEL=okdata $${DATA_MOUNT} ext4 defaults,noatime 0 2" >> /etc/fstab
       mount -a
-      mkdir -p "$${DATA_MOUNT}"/{backend,strava_bridge,wahoo_bridge,letsencrypt,certbot_www}
+      mkdir -p "$${DATA_MOUNT}"/{backend,strava_bridge,wahoo_bridge,inbound_bridge,letsencrypt,certbot_www}
 
       # Logs live on the OS disk (NOT the encrypted data device): transient,
       # retention-pruned, and intentionally excluded from the data volume/backups.
@@ -263,7 +283,7 @@ write_files:
       # is single-tenant, so this is an acceptable trade-off. (letsencrypt/
       # certbot_www are written by the root certbot container, so they don't
       # need this.)
-      chmod 0777 "$${DATA_MOUNT}"/{backend,strava_bridge,wahoo_bridge}
+      chmod 0777 "$${DATA_MOUNT}"/{backend,strava_bridge,wahoo_bridge,inbound_bridge}
 
       # Optional: log in to GHCR for private packages (no-op when public).
       if [ -n "${ghcr_username}" ] && [ -n "${ghcr_token}" ]; then

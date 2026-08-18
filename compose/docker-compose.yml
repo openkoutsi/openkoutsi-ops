@@ -79,6 +79,10 @@ services:
     volumes:
       - strava_bridge_data:/data
     secrets:
+      # Only read when STRAVA_VERIFY_WEBHOOK_SIGNATURE is on, which it is not:
+      # Strava documents no webhook signing, so the bridge's POST /webhook
+      # accepts unsigned events. Kept mounted so turning the check back on is a
+      # one-line change here rather than a secrets migration.
       - strava_client_secret
       - bridge_secret
     expose:

@@ -9,10 +9,37 @@ by this stack and would require a different data architecture.
 
 This doc covers the two ways the box changes size:
 
+- **[Judge the ceiling first](#judge-the-ceiling-first)** — what to measure, and
+  what the measurements cannot tell you.
 - **[Resize in place](#resize-in-place-recommended)** — bump the plan, `tofu apply`.
   Same VM, **same IP, no DNS change.** This is the normal path.
 - **[Fresh-VM cutover](#fresh-vm-cutover)** — build a new VM and migrate data to it.
   New IP, **DNS change required.** Only when a resize can't do the job.
+
+## Judge the ceiling first
+
+Before costing a bigger plan — and long before costing a re-architecture — find
+out which resource is actually the ceiling. **Netdata** is already deployed at
+`https://metrics.<domain>`, behind the same basic auth as the other dashboards,
+and shows CPU utilisation and steal, memory and swap, disk I/O and space,
+network, and per-container resource use. See
+[Observability](README.md#observability).
+
+Two things worth knowing before you rely on it:
+
+- **The history window is finite, and smaller than you might assume.**
+  `compose/netdata/netdata.conf` sets `dbengine multihost disk space MB = 256`
+  with a single storage tier at a two-second resolution. That is weeks on this
+  box, not months. If you want a month of trend data behind a sizing decision,
+  raise the cap *before* the observation period rather than discovering the
+  window has already rolled past it.
+- **Netdata cannot show you the ceiling that matters most here.** SQLite allows
+  one writer per database file, so a box that looks comfortably CPU-idle can
+  still be write-bound. If throughput has stopped improving while the resource
+  graphs stay flat, that is the signal that a bigger plan is not the answer and
+  the data architecture is — which is a much larger conversation than this
+  document, and belongs in the backend repository's scaling issues rather than
+  in a resize.
 
 ## Resize in place (recommended)
 

@@ -215,6 +215,16 @@ variable "email_from" {
   default     = ""
 }
 
+# Optional OSM-surface-classification sidecar (issue #56) — off by default.
+# Flipping this only sets COMPOSE_PROFILES=valhalla in stack.env; it does not
+# build or ship tiles. Run scripts/valhalla-build-and-ship.sh first, or the
+# service starts with nothing to serve. See README.
+variable "valhalla_enabled" {
+  description = "Enable the optional Valhalla routing sidecar (issue #56). Requires tiles to already be shipped to the data device — see scripts/valhalla-build-and-ship.sh."
+  type        = bool
+  default     = false
+}
+
 # ── GoAccess dashboard auth ─────────────────────────────────────────────────
 
 variable "goaccess_htpasswd" {

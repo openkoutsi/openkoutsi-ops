@@ -61,7 +61,46 @@ Alongside the app images the stack runs a few pinned third-party containers:
 (nginx-log dashboard), `timberio/vector` (collects every container's stdout into
 per-service log files), `amir20/dozzle` (live log viewer), and `netdata/netdata`
 (host + container performance metrics). See [Observability](#observability) for
-the logging and metrics pieces.
+the logging and metrics pieces. One more, `valhalla/valhalla-scripted`, is
+optional and off by default — see [Optional: Valhalla
+sidecar](#optional-valhalla-sidecar-osm-surface-classification).
+
+## Optional: Valhalla sidecar (OSM surface classification)
+
+Off by default. [Issue #56](https://github.com/openkoutsi/openkoutsi/issues/56)
+adds optional road-surface classification to course recon, matched against OSM
+data via a self-hosted [Valhalla](https://valhalla.github.io/valhalla/)
+sidecar — each self-hoster who wants it builds tiles for their own region
+rather than the stack bundling any.
+
+**This box never builds tiles.** A full-country build was measured on a dev
+machine at over 5 GB of peak RAM — more than this plan's entire 2 GB — so
+`tile_urls` stays empty in the container's own config, and it only ever serves
+what's already on disk. Getting tiles onto the box is a deliberate, manual
+exception to "CI builds, the VM pulls":
+
+1. Build tiles for your region and ship the minimal serving payload (under
+   1 GB — not the ~5 GB a full local build directory produces, most of which
+   is the source PBF and elevation data the container never needs to serve):
+   ```bash
+   scripts/valhalla-build-and-ship.sh --region europe/finland --host <vm-ip>
+   ```
+   Re-run this whenever the OSM extract needs refreshing — there is no
+   automatic refresh. See `--help` for jump-host options if the VM isn't
+   directly reachable from where you're running this.
+2. Set `valhalla_enabled = true` in `terraform.tfvars` and `tofu apply`. This
+   only flips `COMPOSE_PROFILES=valhalla` in `stack.env` — an in-place config
+   change, not a VM replacement.
+3. The next deploy poll (or a manual `docker compose up -d`) starts the
+   service. It is never exposed publicly, only reachable at
+   `http://valhalla:8002` from other containers on the compose network.
+
+Check [Netdata](#observability) before enabling this in production: the
+container's own memory is capped at 768 MB (`deploy.resources.limits.memory`
+in the compose file) so a runaway request can't pressure the rest of the
+stack, but that number came from steady-state serving on an otherwise-idle dev
+machine — not from headroom actually observed on this box under everything
+else it already runs.
 
 ## Provisioning
 

@@ -101,6 +101,42 @@ services:
     expose:
       - "8085"
 
+  # Optional OSM-surface-classification sidecar (issue #56) — self-hosted, off
+  # by default via the "valhalla" Compose profile (COMPOSE_PROFILES in
+  # stack.env). Never exposed publicly; reachable only from other containers on
+  # the compose network, at http://valhalla:8002.
+  #
+  # This box never builds tiles: a full-country build was measured locally at
+  # over 5 GB of peak RAM, well beyond this plan's entire 2 GB. tile_urls stays
+  # empty so the container only ever serves what's already on the mounted
+  # volume — tiles are built on a dev machine and shipped by hand with
+  # scripts/valhalla-build-and-ship.sh, the one deliberate exception to "CI
+  # builds, the VM pulls." Re-run that script whenever the OSM data needs
+  # refreshing; nothing here triggers it automatically.
+  valhalla:
+    image: ghcr.io/valhalla/valhalla-scripted:3.8.3
+    profiles: ["valhalla"]
+    restart: unless-stopped
+    environment:
+      # Must be an empty string, not unset — the image's entrypoint does
+      # `set -u`-style strict variable checks and fails on a missing key.
+      tile_urls: ""
+      use_tiles_ignore_pbf: "True"
+      serve_tiles: "True"
+    volumes:
+      - valhalla_tiles:/custom_files
+    # Bounds this one container's memory so a pathological request can't
+    # pressure the rest of the stack on a 2 GB box. Sized from steady-state
+    # serving measured at ~460 MiB on a dev machine — recheck actual headroom
+    # in Netdata before relying on this in production, since that number
+    # wasn't measured against everything else this box already runs.
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    expose:
+      - "8002"
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
@@ -270,6 +306,17 @@ volumes:
       type: none
       o: bind
       device: ${DATA_MOUNT}/wahoo_bridge
+  # Valhalla's tile set (issue #56) — shipped by hand from a dev machine, never
+  # built on this box (see the valhalla service above). Unlike goaccess_report
+  # or landing_html, that makes it NOT free to regenerate here, so it gets the
+  # same encrypted + backed-up treatment as backend_data et al. rather than
+  # living with the transient, OS-disk volumes below.
+  valhalla_tiles:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_MOUNT}/valhalla
   letsencrypt:
     driver: local
     driver_opts:

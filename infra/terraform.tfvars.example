@@ -37,6 +37,10 @@ llm_allowed_servers = "" # env-only SSRF allowlist (optional)
 email_provider = "lettermint" # or "euromail"
 email_from     = ""
 
+# Optional Valhalla routing sidecar (issue #56) — off by default. Ship tiles
+# first with scripts/valhalla-build-and-ship.sh, then flip this on. See README.
+# valhalla_enabled = true
+
 # ── Dashboard auth (htpasswd -nB admin) ──────────────────────────────────────
 # goaccess_htpasswd = "admin:$2y$05$..."   # set via TF_VAR_goaccess_htpasswd
 

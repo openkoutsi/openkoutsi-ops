@@ -19,6 +19,11 @@ locals {
   # /opt/openkoutsi/data is the mounted device; /opt/openkoutsi/logs is the OS disk.
   log_mount = "/opt/openkoutsi/logs"
 
+  # Compose profiles gate optional services. Valhalla (issue #56) is the only
+  # one today: off by default, and only useful once tiles have been shipped to
+  # the data device by hand (scripts/valhalla-build-and-ship.sh) — see README.
+  compose_profiles = var.valhalla_enabled ? "valhalla" : ""
+
   cloud_init = templatefile("${path.module}/cloud-init.yaml.tftpl", {
     data_mount      = local.data_mount
     log_mount       = local.log_mount
@@ -50,6 +55,7 @@ locals {
     wahoo_client_id     = var.wahoo_client_id
     email_provider      = var.email_provider
     email_from          = var.email_from
+    compose_profiles    = local.compose_profiles
 
     # Dashboard auth
     goaccess_htpasswd = var.goaccess_htpasswd

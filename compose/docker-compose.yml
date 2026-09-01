@@ -31,6 +31,12 @@ services:
       # secret set, self-serve signup and email password reset stay unavailable.
       EMAIL_PROVIDER: ${EMAIL_PROVIDER}
       EMAIL_FROM: ${EMAIL_FROM}
+      # Where the optional OSM-surface sidecar is (issue #56). Empty unless the
+      # valhalla profile is on, and empty means course recon simply solves every
+      # course as dry pavement — the feature is absent, not broken. Set from
+      # terraform's valhalla_enabled, so one flag starts the container and tells
+      # the backend about it.
+      VALHALLA_URL: ${VALHALLA_URL}
     volumes:
       - backend_data:/data
     secrets:

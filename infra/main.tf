@@ -24,6 +24,13 @@ locals {
   # the data device by hand (scripts/valhalla-build-and-ship.sh) — see README.
   compose_profiles = var.valhalla_enabled ? "valhalla" : ""
 
+  # The backend only classifies road surfaces when it knows where the sidecar
+  # is, and the sidecar is only started when the profile is on — so both are
+  # derived from the one flag rather than left as two things to keep in step.
+  # Empty when off, which is what makes the feature *absent* on a default
+  # deployment rather than configured-and-broken.
+  valhalla_url = var.valhalla_enabled ? "http://valhalla:8002" : ""
+
   cloud_init = templatefile("${path.module}/cloud-init.yaml.tftpl", {
     data_mount      = local.data_mount
     log_mount       = local.log_mount
@@ -56,6 +63,7 @@ locals {
     email_provider      = var.email_provider
     email_from          = var.email_from
     compose_profiles    = local.compose_profiles
+    valhalla_url        = local.valhalla_url
 
     # Dashboard auth
     goaccess_htpasswd = var.goaccess_htpasswd

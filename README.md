@@ -89,11 +89,24 @@ exception to "CI builds, the VM pulls":
    automatic refresh. See `--help` for jump-host options if the VM isn't
    directly reachable from where you're running this.
 2. Set `valhalla_enabled = true` in `terraform.tfvars` and `tofu apply`. This
-   only flips `COMPOSE_PROFILES=valhalla` in `stack.env` — an in-place config
-   change, not a VM replacement.
+   flips `COMPOSE_PROFILES=valhalla` and sets `VALHALLA_URL=http://valhalla:8002`
+   in `stack.env` — an in-place config change, not a VM replacement. Both come
+   from the one flag: the profile starts the container, and the URL is how the
+   backend knows it is there. With the URL empty the backend simply solves every
+   course as dry pavement, which the written pacing plan states out loud.
 3. The next deploy poll (or a manual `docker compose up -d`) starts the
    service. It is never exposed publicly, only reachable at
    `http://valhalla:8002` from other containers on the compose network.
+4. Switch **Allow course recon** on in the app's admin console. That instance
+   setting ships **off** and gates course recon as a whole, separately from this
+   sidecar — see `ADMIN.md` in the backend repository. Existing courses can then
+   be classified without being re-uploaded.
+
+Tiles get old quietly. Nothing here notices a stale extract or warns about one:
+a road resurfaced last spring keeps its old classification until you re-run the
+build script, and the app has no way to tell the difference. Pick a refresh
+cadence you will actually keep — Geofabrik extracts are rebuilt daily, and once
+or twice a year is plenty for surface data — and re-run step 1 to apply it.
 
 Check [Netdata](#observability) before enabling this in production: the
 container's own memory is capped at 768 MB (`deploy.resources.limits.memory`

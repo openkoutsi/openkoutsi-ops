@@ -151,6 +151,12 @@ variable "wahoo_bridge_host" {
   default     = "wahoo-bridge"
 }
 
+variable "hammerhead_bridge_host" {
+  description = "Hostname for the Hammerhead webhook bridge (used only when hammerhead_enabled)."
+  type        = string
+  default     = "hammerhead-bridge"
+}
+
 variable "stats_host" {
   description = "Hostname for the GoAccess access-log dashboard."
   type        = string
@@ -201,6 +207,22 @@ variable "wahoo_client_id" {
   description = "Wahoo OAuth client ID (not secret)."
   type        = string
   default     = ""
+}
+
+variable "hammerhead_client_id" {
+  description = "Hammerhead (Karoo) OAuth client ID (not secret). Empty = Hammerhead not offered."
+  type        = string
+  default     = ""
+}
+
+# Optional Hammerhead webhook bridge (openkoutsi#69) — off by default. Turns on
+# the "hammerhead" Compose profile, its nginx server block and its hostname on
+# the TLS cert, and tells the backend where the bridge is. Needs an A record for
+# hammerhead_bridge_host first, or the certificate request fails.
+variable "hammerhead_enabled" {
+  description = "Run the Hammerhead webhook bridge (openkoutsi#69). Requires a DNS record for hammerhead_bridge_host and the hammerhead_* secrets."
+  type        = bool
+  default     = false
 }
 
 variable "email_provider" {
@@ -282,6 +304,27 @@ variable "wahoo_bridge_secret" {
 
 variable "wahoo_webhook_token" {
   description = "Token Wahoo embeds in webhook payloads (Wahoo bridge side)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "hammerhead_client_secret" {
+  description = "Hammerhead OAuth client secret (backend)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "hammerhead_bridge_secret" {
+  description = "Shared bearer secret between backend and the Hammerhead bridge (>= 32 chars when hammerhead_enabled)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "hammerhead_webhook_secret" {
+  description = "Secret Hammerhead signs webhook deliveries with (X-Hmac-Signature; Hammerhead bridge side)."
   type        = string
   sensitive   = true
   default     = ""

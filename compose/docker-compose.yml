@@ -22,6 +22,12 @@ services:
       BRIDGE_URL: ${BRIDGE_URL}
       WAHOO_CLIENT_ID: ${WAHOO_CLIENT_ID}
       WAHOO_BRIDGE_URL: ${WAHOO_BRIDGE_URL}
+      # Hammerhead / Karoo (openkoutsi#69). Empty client ID = not offered.
+      # HAMMERHEAD_BRIDGE_URL stays empty unless the "hammerhead" profile below
+      # is on, which is what keeps the backend from polling a bridge that is not
+      # running.
+      HAMMERHEAD_CLIENT_ID: ${HAMMERHEAD_CLIENT_ID}
+      HAMMERHEAD_BRIDGE_URL: ${HAMMERHEAD_BRIDGE_URL}
       # LLM base URL / model / API key are configured on the admin settings page
       # (stored in InstanceSettings) — not seeded here. LLM_ALLOWED_SERVERS is an
       # env-only SSRF guard (not an instance setting), so it stays.
@@ -46,6 +52,9 @@ services:
       - bridge_secret
       - wahoo_client_secret
       - wahoo_bridge_secret
+      # Empty files on an instance that does not offer Hammerhead.
+      - hammerhead_client_secret
+      - hammerhead_bridge_secret
       # Outbound-email API tokens (set the one matching EMAIL_PROVIDER; leave the
       # file empty to keep email — and thus self-serve signup/reset — disabled).
       - lettermint_api_key
@@ -106,6 +115,27 @@ services:
       - wahoo_webhook_token
     expose:
       - "8085"
+
+  # Hammerhead (Karoo) webhook bridge (openkoutsi#69) — optional, gated by the
+  # "hammerhead" Compose profile (COMPOSE_PROFILES in stack.env) because it
+  # refuses to start without a real hammerhead_bridge_secret. Verifies each
+  # delivery's HMAC signature and queues it; Hammerhead never redelivers, so it
+  # answers 200 as soon as the event is on disk and the backend does the rest.
+  # Not in nginx's depends_on: a dependency on a profile that is off would stop
+  # nginx starting.
+  hammerhead_bridge:
+    image: ghcr.io/openkoutsi/openkoutsi-hammerhead-bridge:latest
+    profiles: ["hammerhead"]
+    restart: unless-stopped
+    environment:
+      DATABASE_PATH: /data/bridge.db
+    volumes:
+      - hammerhead_bridge_data:/data
+    secrets:
+      - hammerhead_bridge_secret
+      - hammerhead_webhook_secret
+    expose:
+      - "8086"
 
   # Optional OSM-surface-classification sidecar (issue #56) — self-hosted, off
   # by default via the "valhalla" Compose profile (COMPOSE_PROFILES in
@@ -312,6 +342,12 @@ volumes:
       type: none
       o: bind
       device: ${DATA_MOUNT}/wahoo_bridge
+  hammerhead_bridge_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_MOUNT}/hammerhead_bridge
   # Valhalla's tile set (issue #56) — shipped by hand from a dev machine, never
   # built on this box (see the valhalla service above). Unlike goaccess_report
   # or landing_html, that makes it NOT free to regenerate here, so it gets the
@@ -375,6 +411,12 @@ secrets:
     file: ./secrets/wahoo_bridge_secret
   wahoo_webhook_token:
     file: ./secrets/wahoo_webhook_token
+  hammerhead_client_secret:
+    file: ./secrets/hammerhead_client_secret
+  hammerhead_bridge_secret:
+    file: ./secrets/hammerhead_bridge_secret
+  hammerhead_webhook_secret:
+    file: ./secrets/hammerhead_webhook_secret
   lettermint_api_key:
     file: ./secrets/lettermint_api_key
   euromail_api_key:

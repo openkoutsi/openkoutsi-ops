@@ -69,10 +69,15 @@ jobs:
           WAHOO_BRIDGE_URL=https://wahoo-bridge.example.invalid
           STRAVA_CLIENT_ID=0
           WAHOO_CLIENT_ID=0
+          HAMMERHEAD_CLIENT_ID=0
+          HAMMERHEAD_BRIDGE_URL=https://hammerhead-bridge.example.invalid
+          COMPOSE_PROFILES=hammerhead
           LLM_ALLOWED_SERVERS=
           EOF
           for s in secret_key encryption_key strava_client_secret bridge_secret \
-                   wahoo_client_secret wahoo_bridge_secret wahoo_webhook_token; do
+                   wahoo_client_secret wahoo_bridge_secret wahoo_webhook_token \
+                   hammerhead_client_secret hammerhead_bridge_secret \
+                   hammerhead_webhook_secret; do
             echo placeholder > "secrets/$s"
           done
 

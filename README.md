@@ -48,6 +48,7 @@ and writing secrets from TF variables. To change the box, re-render and re-provi
 | Backend        | `ghcr.io/openkoutsi/openkoutsi-backend`        | 8000 | backend    |
 | Strava bridge  | `ghcr.io/openkoutsi/openkoutsi-strava-bridge`  | 8084 | backend    |
 | Wahoo bridge   | `ghcr.io/openkoutsi/openkoutsi-wahoo-bridge`   | 8085 | backend    |
+| Hammerhead bridge (optional) | `ghcr.io/openkoutsi/openkoutsi-hammerhead-bridge` | 8086 | backend |
 | Web frontend   | `ghcr.io/openkoutsi/openkoutsi-web`            | 3000 | web        |
 | Landing page   | `ghcr.io/openkoutsi/openkoutsi-landing-page`   | —    | landing-page |
 
@@ -115,6 +116,41 @@ stack, but that number came from steady-state serving on an otherwise-idle dev
 machine — not from headroom actually observed on this box under everything
 else it already runs.
 
+
+## Optional: Hammerhead (Karoo) integration
+
+openkoutsi#69. Off by default, in two layers:
+
+* **Connect + history sync** need only the OAuth app: set `hammerhead_client_id`
+  and `hammerhead_client_secret` (register the redirect URI
+  `https://<api_host>.<domain>/api/integrations/hammerhead/callback` in the
+  Hammerhead developer dashboard).
+* **Automatic import of new rides** also needs the webhook bridge. Add an A record
+  for `hammerhead-bridge` (or your `hammerhead_bridge_host`), then set
+  `hammerhead_enabled = true` with `hammerhead_bridge_secret` (≥ 32 chars) and
+  `hammerhead_webhook_secret` (from the dashboard). That turns on the
+  `hammerhead` Compose profile, writes its nginx server block, adds the host to
+  the TLS certificate and sets `HAMMERHEAD_BRIDGE_URL` for the backend. Point the
+  dashboard's webhook URL at `https://hammerhead-bridge.<domain>/webhook`.
+
+Hammerhead does not redeliver a webhook that fails, so the bridge only verifies
+the HMAC signature, queues the event and answers 200; the backend polls it every
+minute. A ride missed while the bridge was down is picked up by the athlete's next
+*Sync*.
+
+Cloud-init writes the three `hammerhead_*` secret files even when the feature is
+off (empty), because the backend mounts two of them. An **existing VM** that was
+provisioned before this change and is updated by hand needs them created before
+the new compose file is used:
+
+```bash
+cd /opt/openkoutsi
+for s in hammerhead_client_secret hammerhead_bridge_secret hammerhead_webhook_secret; do
+  [ -e "secrets/$s" ] || install -m 0444 /dev/null "secrets/$s"
+done
+mkdir -p data/hammerhead_bridge && chmod 0777 data/hammerhead_bridge
+```
+
 ## Provisioning
 
 ### 1. Remote state (one-time)
@@ -143,7 +179,8 @@ Provide secrets via `TF_VAR_*` env vars or a gitignored `secrets.auto.tfvars`
 fresh values:
 
 ```bash
-# secret_key / bridge_secret / wahoo_bridge_secret / wahoo_webhook_token
+# secret_key / bridge_secret / wahoo_bridge_secret / wahoo_webhook_token /
+# hammerhead_bridge_secret
 python -c "import secrets; print(secrets.token_hex(32))"
 # encryption_key
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
@@ -179,6 +216,7 @@ registrar**, all pointing at the `public_ipv4` output:
 | `stats`          | GoAccess report  |
 | `logs`           | Dozzle log viewer |
 | `metrics`        | Netdata metrics dashboard |
+| `hammerhead-bridge` | Hammerhead bridge — only with `hammerhead_enabled` |
 
 ### 5. TLS certificates (first-boot bootstrap)
 
@@ -322,6 +360,8 @@ when to fall back to the fresh-VM cutover below instead.
    # each bridge DB
    rsync -a old:/path/strava_bridge/bridge.db deploy@<new-ip>:/opt/openkoutsi/data/strava_bridge/
    rsync -a old:/path/wahoo_bridge/bridge.db  deploy@<new-ip>:/opt/openkoutsi/data/wahoo_bridge/
+   # only if hammerhead_enabled
+   rsync -a old:/path/hammerhead_bridge/bridge.db deploy@<new-ip>:/opt/openkoutsi/data/hammerhead_bridge/
    ```
 3. `docker compose up -d` (the backend image runs migrations on start — Part A).
 4. Verify (below), then cut the registrar DNS to `<new-ip>` and decommission the

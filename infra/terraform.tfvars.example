@@ -29,6 +29,11 @@ certbot_email = "admin@openkoutsi.example"
 # ── Non-secret app config ────────────────────────────────────────────────────
 strava_client_id    = "12345"
 wahoo_client_id     = ""
+# Hammerhead / Karoo (openkoutsi#69). The client ID alone offers connect + sync;
+# hammerhead_enabled also runs the webhook bridge (add an A record for
+# hammerhead_bridge_host, default "hammerhead-bridge", first).
+# hammerhead_client_id = ""
+# hammerhead_enabled   = true
 # LLM base URL / model / API key are set on the admin settings page, not here.
 llm_allowed_servers = "" # env-only SSRF allowlist (optional)
 
@@ -52,6 +57,9 @@ email_from     = ""
 # wahoo_client_secret  = ""
 # wahoo_bridge_secret  = "..."
 # wahoo_webhook_token  = "..."
+# hammerhead_client_secret  = "..."
+# hammerhead_bridge_secret  = "..."   # >= 32 chars; required when hammerhead_enabled
+# hammerhead_webhook_secret = "..."   # from the Hammerhead developer dashboard
 # lettermint_api_key   = "..."   # outbound email (EMAIL_PROVIDER=lettermint)
 # euromail_api_key     = "..."   # outbound email (EMAIL_PROVIDER=euromail)
 

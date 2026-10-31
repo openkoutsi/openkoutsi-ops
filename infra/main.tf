@@ -11,6 +11,10 @@ locals {
   logs_fqdn          = "${var.logs_host}.${var.domain}"
   metrics_fqdn       = "${var.metrics_host}.${var.domain}"
 
+  # Optional (openkoutsi#69): empty when the Hammerhead bridge is off, so it
+  # stays off the certificate and out of the hostnames needing A records.
+  hammerhead_bridge_fqdn = var.hammerhead_enabled ? "${var.hammerhead_bridge_host}.${var.domain}" : ""
+
   data_mount = "/opt/openkoutsi/data"
 
   # Logs (nginx access/error + Vector's per-service files) stay on the VM's OS
@@ -19,10 +23,14 @@ locals {
   # /opt/openkoutsi/data is the mounted device; /opt/openkoutsi/logs is the OS disk.
   log_mount = "/opt/openkoutsi/logs"
 
-  # Compose profiles gate optional services. Valhalla (issue #56) is the only
-  # one today: off by default, and only useful once tiles have been shipped to
-  # the data device by hand (scripts/valhalla-build-and-ship.sh) — see README.
-  compose_profiles = var.valhalla_enabled ? "valhalla" : ""
+  # Compose profiles gate optional services, all off by default: Valhalla
+  # (issue #56), only useful once tiles have been shipped to the data device by
+  # hand (scripts/valhalla-build-and-ship.sh) — see README — and the Hammerhead
+  # webhook bridge (openkoutsi#69).
+  compose_profiles = join(",", compact([
+    var.valhalla_enabled ? "valhalla" : "",
+    var.hammerhead_enabled ? "hammerhead" : "",
+  ]))
 
   # The backend only classifies road surfaces when it knows where the sidecar
   # is, and the sidecar is only started when the profile is on — so both are
@@ -30,6 +38,10 @@ locals {
   # Empty when off, which is what makes the feature *absent* on a default
   # deployment rather than configured-and-broken.
   valhalla_url = var.valhalla_enabled ? "http://valhalla:8002" : ""
+
+  # Same reasoning for the Hammerhead bridge: the backend polls it only when it
+  # is told where it is, and is told only when the profile starts it.
+  hammerhead_bridge_url = var.hammerhead_enabled ? "https://${local.hammerhead_bridge_fqdn}" : ""
 
   cloud_init = templatefile("${path.module}/cloud-init.yaml.tftpl", {
     data_mount      = local.data_mount
@@ -48,6 +60,11 @@ locals {
     certbot_email      = var.certbot_email
     certbot_staging    = var.certbot_staging ? "1" : "0"
 
+    # Hammerhead bridge (openkoutsi#69). The cert entry carries its own leading
+    # space, so CERT_DOMAINS reads the same whether or not it is on.
+    hammerhead_enabled     = var.hammerhead_enabled
+    hammerhead_cert_domain = var.hammerhead_enabled ? " ${local.hammerhead_bridge_fqdn}" : ""
+
     # Service-log retention (days) enforced by the oklog-prune timer.
     log_retention_days = var.log_retention_days
 
@@ -65,6 +82,9 @@ locals {
     compose_profiles    = local.compose_profiles
     valhalla_url        = local.valhalla_url
 
+    hammerhead_client_id  = var.hammerhead_client_id
+    hammerhead_bridge_url = local.hammerhead_bridge_url
+
     # Dashboard auth
     goaccess_htpasswd = var.goaccess_htpasswd
 
@@ -78,6 +98,10 @@ locals {
     wahoo_webhook_token  = var.wahoo_webhook_token
     lettermint_api_key   = var.lettermint_api_key
     euromail_api_key     = var.euromail_api_key
+
+    hammerhead_client_secret  = var.hammerhead_client_secret
+    hammerhead_bridge_secret  = var.hammerhead_bridge_secret
+    hammerhead_webhook_secret = var.hammerhead_webhook_secret
 
     # Optional private-registry login
     ghcr_username = var.ghcr_username
@@ -109,6 +133,9 @@ locals {
     oknginx_logrotate_service = file("${path.module}/../systemd/oknginx-logrotate.service")
     oknginx_logrotate_timer   = file("${path.module}/../systemd/oknginx-logrotate.timer")
     oknginx_logrotate         = file("${path.module}/../scripts/oknginx-logrotate.sh")
+
+    # Hammerhead bridge server block — only written out when hammerhead_enabled.
+    nginx_hammerhead_bridge = templatefile("${path.module}/../compose/nginx/conf.d/hammerhead-bridge.conf", { server_name = local.hammerhead_bridge_fqdn })
   })
 }
 
